@@ -4,7 +4,7 @@
 1. Run with `uvicorn --http h11 --loop uvloop` (if available).
 2. Use appropriate worker count: `workers = CPU cores` for CPU-bound, more for I/O.
 3. Keep requests under `MAX_REQUEST_BYTES` (~64 KB default).
-4. Enforce per-IP rate limiting on `POST /optimize`.
+4. Enforce per-token rate limiting on `POST /v1/optimize`.
 5. Avoid blocking calls; use `asyncio` all the way.
 6. SSE queues are bounded; jobs fail after `SSE_BACKPRESSURE_FAIL_TIMEOUT_S`.
 7. JSON serialization uses compact separators; consider `orjson` for heavy loads.
@@ -84,7 +84,7 @@ Prevents memory leaks and keeps steady-state footprint predictable.
 ## 6. Rate limiting & Request limits
 **Checklist**
 - `MAX_REQUEST_BYTES` guards large payloads.
-- Token bucket rate limiting via `RATE_LIMIT_OPTIMIZE_*`.
+- Token bucket rate limiting via `RATE_LIMIT_PER_MIN` and `RATE_LIMIT_BURST`.
 
 **Why it matters**
 Protects service from overload by large or excessive requests.

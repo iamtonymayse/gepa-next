@@ -3,7 +3,7 @@
 ## Security Quick Start – Top 10
 1. Require auth (`REQUIRE_AUTH`) and keep bearer tokens rotated.
 2. Never log secrets; Authorization headers are redacted and request IDs added.
-3. Enforce per-IP rate limiting on `POST /optimize`.
+3. Enforce per-token rate limiting on `POST /v1/optimize`.
 4. Drop requests with bodies over `MAX_REQUEST_BYTES` (~64 KB default).
 5. Clamp job iterations to `MAX_ITERATIONS` to avoid runaway loops.
 6. Limit SSE queue size (`SSE_QUEUE_MAXSIZE`) and fail after `SSE_BACKPRESSURE_FAIL_TIMEOUT_S`.
@@ -72,7 +72,7 @@ Stops resource exhaustion and unexpected code paths.
 
 ## 5. Rate Limiting / DoS Resilience
 **Checklist**
-- Per-IP token bucket on `POST /optimize`.
+- Token bucket keyed by bearer token (or anonymous-openrouter) on `POST /v1/optimize`.
 - Bounded SSE queue (`SSE_QUEUE_MAXSIZE`).
 
 **Why it matters**

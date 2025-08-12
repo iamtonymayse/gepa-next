@@ -20,8 +20,11 @@ class Settings(BaseSettings):
     SSE_BUFFER_SIZE: int = 200
     MAX_ITERATIONS: int = 10
     MAX_REQUEST_BYTES: int = 64_000
-    RATE_LIMIT_OPTIMIZE_RPS: float = 2.0
-    RATE_LIMIT_OPTIMIZE_BURST: int = 5
+    RATE_LIMIT_PER_MIN: int = 60
+    RATE_LIMIT_BURST: int = 30
+    # legacy names for backward compatibility
+    RATE_LIMIT_OPTIMIZE_RPS: float | None = None
+    RATE_LIMIT_OPTIMIZE_BURST: int | None = None
     JOB_REAPER_INTERVAL_S: float = 2.0
     JOB_TTL_FINISHED_S: float = 30.0
     JOB_TTL_FAILED_S: float = 120.0
@@ -47,6 +50,11 @@ def get_settings() -> Settings:
     settings = _get_settings()
     if "SSE_BACKPRESSURE_FAIL_TIMEOUT_S" not in os.environ:
         settings.SSE_BACKPRESSURE_FAIL_TIMEOUT_S = settings.SSE_PING_INTERVAL_S * 2
+    # map legacy rate limit settings if provided
+    if settings.RATE_LIMIT_OPTIMIZE_RPS is not None:
+        settings.RATE_LIMIT_PER_MIN = int(settings.RATE_LIMIT_OPTIMIZE_RPS * 60)
+    if settings.RATE_LIMIT_OPTIMIZE_BURST is not None:
+        settings.RATE_LIMIT_BURST = settings.RATE_LIMIT_OPTIMIZE_BURST
     return settings
 
 
