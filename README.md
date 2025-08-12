@@ -19,3 +19,17 @@ We welcome contributions! To contribute:
 Our main branch is protected: direct pushes are disabled. All changes must go through pull requests, CI must be green, and at least one review is required before merge.
 
 For more details see [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md), and [SUPPORT.md](SUPPORT.md).
+
+## Quickstart
+
+```bash
+pip install -r requirements.txt
+export OPENROUTER_API_KEY=dev
+uvicorn innerloop.main:app --reload
+
+# create a job
+curl -s -X POST "http://127.0.0.1:8000/optimize?iterations=1"
+
+# stream events
+curl -N "http://127.0.0.1:8000/optimize/<job_id>/events"
+```
