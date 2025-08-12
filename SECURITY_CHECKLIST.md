@@ -15,6 +15,8 @@
 12. Deduplicate job submissions via Idempotency-Key headers (watch TTL collisions).
 13. Gate commits with ruff, mypy, and pytest in CI.
 14. Version APIs under `/v1` and phase out unversioned endpoints.
+15. Use `JOB_STORE=sqlite` for durable jobs (WAL mode) or `memory` for ephemeral testing.
+16. Admin endpoints under `/v1/admin/*` always require bearer auth.
 
 ## 1. Overview
 **Checklist**

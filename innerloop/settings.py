@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Literal
 import os
 
 from pydantic import Field, field_validator
@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     SERVICE_ENV: str = "dev"
     IDEMPOTENCY_TTL_S: float = 600.0
     USE_MODEL_STUB: bool = True
+    JOB_STORE: Literal["memory", "sqlite"] = "memory"
+    SQLITE_PATH: str = "gepa.db"
 
     @field_validator("API_BEARER_TOKENS", "CORS_ALLOWED_ORIGINS", mode="before")
     @classmethod
