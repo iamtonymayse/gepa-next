@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ...settings import get_settings
+from ..models import ErrorResponse
+from ..metrics import inc
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -32,7 +34,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             needed = 1 - tokens
             retry_after = max(1, int(needed / rate))
             self._buckets[ip] = (tokens, now)
-            return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429, headers={"Retry-After": str(retry_after)})
+            err = ErrorResponse(
+                code="rate_limited",
+                message="Rate limit exceeded",
+                request_id=request.state.request_id,
+            )
+            inc("rate_limited")
+            return JSONResponse(
+                err.model_dump(), status_code=429, headers={"Retry-After": str(retry_after)}
+            )
         tokens -= 1
         self._buckets[ip] = (tokens, now)
         return await call_next(request)

@@ -6,7 +6,7 @@
 3. Keep requests under `MAX_REQUEST_BYTES` (~64 KB default).
 4. Enforce per-IP rate limiting on `POST /optimize`.
 5. Avoid blocking calls; use `asyncio` all the way.
-6. SSE queues are bounded; monitor for backpressure.
+6. SSE queues are bounded; jobs fail after `SSE_BACKPRESSURE_FAIL_TIMEOUT_S`.
 7. JSON serialization uses compact separators; consider `orjson` for heavy loads.
 8. Track request/stream latencies with structured logs.
 9. Load-test with `hey` or `wrk` before release.

@@ -6,7 +6,7 @@
 3. Enforce per-IP rate limiting on `POST /optimize`.
 4. Drop requests with bodies over `MAX_REQUEST_BYTES` (~64 KB default).
 5. Clamp job iterations to `MAX_ITERATIONS` to avoid runaway loops.
-6. Limit SSE queue size (`SSE_QUEUE_MAXSIZE`) to apply backpressure.
+6. Limit SSE queue size (`SSE_QUEUE_MAXSIZE`) and fail after `SSE_BACKPRESSURE_FAIL_TIMEOUT_S`.
 7. Serve over TLS via a trusted proxy; set strict headers for SSE and HTTP.
 8. Disable CORS unless `CORS_ALLOWED_ORIGINS` is explicitly configured.
 9. Keep dependencies pinned and run `pip-audit` regularly.
