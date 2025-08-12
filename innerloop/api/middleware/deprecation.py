@@ -23,6 +23,6 @@ class DeprecationMiddleware(BaseHTTPMiddleware):
         for old, new in self._map.items():
             if path == old or path.startswith(old + "/"):
                 response.headers["Deprecation"] = "true"
-                response.headers["Link"] = f"<{new}>; rel=\"successor-version\""
+                response.headers["Link"] = f'<{new}>; rel="successor-version"'
                 break
         return response
