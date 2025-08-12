@@ -13,27 +13,37 @@ from ..metrics import inc
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Token bucket per IP for POST /optimize requests."""
+    """Token bucket per bearer token for POST /optimize."""
 
     def __init__(self, app) -> None:
         super().__init__(app)
         self._buckets: Dict[str, Tuple[float, float]] = {}
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
-        if not (request.method == "POST" and request.url.path == "/optimize"):
+        path = request.url.path
+        if not (request.method == "POST" and path in {"/optimize", "/v1/optimize"}):
             return await call_next(request)
+
         settings = get_settings()
-        rate = settings.RATE_LIMIT_OPTIMIZE_RPS
-        burst = settings.RATE_LIMIT_OPTIMIZE_BURST
-        ip = request.headers.get("x-forwarded-for", request.client.host or "")
-        ip = ip.split(",")[0].strip()
+        rate = settings.RATE_LIMIT_PER_MIN / 60.0
+        burst = settings.RATE_LIMIT_BURST
+
+        auth = request.headers.get("authorization", "")
+        token = None
+        if auth.lower().startswith("bearer "):
+            token = auth.split(" ", 1)[1]
+        elif settings.OPENROUTER_API_KEY and "authorization" not in request.headers:
+            token = "anonymous-openrouter"
+        else:
+            token = request.client.host or ""  # fallback
+
         now = time.monotonic()
-        tokens, last = self._buckets.get(ip, (burst, now))
+        tokens, last = self._buckets.get(token, (burst, now))
         tokens = min(burst, tokens + (now - last) * rate)
         if tokens < 1:
             needed = 1 - tokens
             retry_after = max(1, int(needed / rate))
-            self._buckets[ip] = (tokens, now)
+            self._buckets[token] = (tokens, now)
             err = ErrorResponse(
                 code="rate_limited",
                 message="Rate limit exceeded",
@@ -44,5 +54,5 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 err.model_dump(), status_code=429, headers={"Retry-After": str(retry_after)}
             )
         tokens -= 1
-        self._buckets[ip] = (tokens, now)
+        self._buckets[token] = (tokens, now)
         return await call_next(request)

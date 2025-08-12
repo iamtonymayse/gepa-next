@@ -27,9 +27,12 @@ pip install -r requirements.txt
 export OPENROUTER_API_KEY=dev
 uvicorn innerloop.main:app --reload
 
-# create a job
-curl -s -X POST "http://127.0.0.1:8000/optimize?iterations=1"
+# create a job (v1 API)
+curl -s -X POST "http://127.0.0.1:8000/v1/optimize?iterations=1" -H "Idempotency-Key: demo-1"
 
 # stream events
-curl -N "http://127.0.0.1:8000/optimize/<job_id>/events"
+curl -N "http://127.0.0.1:8000/v1/optimize/<job_id>/events"
+
+# resume a stream using Last-Event-ID
+curl -N -H "Last-Event-ID: 5" "http://127.0.0.1:8000/v1/optimize/<job_id>/events"
 ```

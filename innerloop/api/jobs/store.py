@@ -4,7 +4,10 @@ import json
 from collections import deque
 from typing import TYPE_CHECKING, Dict, List, Optional, Protocol, Tuple
 
-import aiosqlite
+try:  # pragma: no cover - aiosqlite optional
+    import aiosqlite  # type: ignore
+except Exception:  # pragma: no cover - fallback when missing
+    aiosqlite = None  # type: ignore
 
 from ...settings import get_settings
 
@@ -84,13 +87,15 @@ class MemoryJobStore:
 
 
 class SQLiteJobStore:
-    def __init__(self, db: aiosqlite.Connection) -> None:
+    def __init__(self, db: "aiosqlite.Connection") -> None:
         settings = get_settings()
         self.db = db
         self.buffer_size = settings.SSE_BUFFER_SIZE
 
     @classmethod
     async def create(cls, path: str) -> "SQLiteJobStore":
+        if aiosqlite is None:  # pragma: no cover - safety
+            raise RuntimeError("aiosqlite is required for SQLiteJobStore")
         db = await aiosqlite.connect(path)
         await db.execute("PRAGMA journal_mode=WAL")
         await db.execute(
