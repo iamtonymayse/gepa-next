@@ -15,12 +15,13 @@ from .api.routers.health import router as health_router
 from .api.routers.optimize import router as optimize_router
 from .api.routers.admin import router as admin_router
 from .api.jobs.registry import JobRegistry
-from .api.jobs.store import MemoryJobStore, SQLiteJobStore
+from .api.jobs.store import JobStore, MemoryJobStore, SQLiteJobStore
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    store: JobStore
     if settings.JOB_STORE == "sqlite":
         store = await SQLiteJobStore.create(settings.SQLITE_PATH)
     else:

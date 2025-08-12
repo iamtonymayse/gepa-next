@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 from typing import Optional, Protocol
 
-from ..settings import get_settings
+from ..settings import Settings, get_settings
 
 
 class ModelProvider(Protocol):
@@ -41,7 +41,7 @@ class OpenRouterProvider:
             return "unavailable"
 
 
-def get_provider_from_env(settings: Optional[object] = None) -> ModelProvider:
+def get_provider_from_env(settings: Optional[Settings] = None) -> ModelProvider:
     settings = settings or get_settings()
     if not settings.USE_MODEL_STUB and settings.OPENROUTER_API_KEY:
         return OpenRouterProvider(settings.OPENROUTER_API_KEY)
