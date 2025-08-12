@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     SSE_QUEUE_MAXSIZE: int = 100
     SSE_PING_INTERVAL_S: float = 1.0
     SSE_BACKPRESSURE_FAIL_TIMEOUT_S: float = 2.0
+    SSE_BUFFER_SIZE: int = 200
     MAX_ITERATIONS: int = 10
     MAX_REQUEST_BYTES: int = 64_000
     RATE_LIMIT_OPTIMIZE_RPS: float = 2.0
@@ -27,6 +28,8 @@ class Settings(BaseSettings):
     JOB_TTL_CANCELLED_S: float = 60.0
     SERVICE_NAME: str = "gepa-next"
     SERVICE_ENV: str = "dev"
+    IDEMPOTENCY_TTL_S: float = 600.0
+    USE_MODEL_STUB: bool = True
 
     @field_validator("API_BEARER_TOKENS", "CORS_ALLOWED_ORIGINS", mode="before")
     @classmethod

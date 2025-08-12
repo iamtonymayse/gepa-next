@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass, field
+from collections import deque
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -29,6 +30,8 @@ class Job:
     id: str
     status: JobStatus = JobStatus.PENDING
     queue: asyncio.Queue[Dict[str, Any]] = field(init=False)
+    buffer: deque[Dict[str, Any]] = field(init=False)
+    next_event_id: int = 1
     task: Optional[asyncio.Task] = None
     result: Optional[Dict[str, Any]] = None
     created_at: float = field(default_factory=lambda: asyncio.get_event_loop().time())
@@ -38,19 +41,33 @@ class Job:
     def __post_init__(self) -> None:
         settings = get_settings()
         self.queue = asyncio.Queue(maxsize=settings.SSE_QUEUE_MAXSIZE)
+        self.buffer = deque(maxlen=settings.SSE_BUFFER_SIZE)
 
 
 class JobRegistry:
     def __init__(self) -> None:
         self.jobs: Dict[str, Job] = {}
         self._shutdown = False
+        self._idempotency: Dict[str, tuple[str, float]] = {}
 
-    def create_job(self, iterations: int, payload: Dict[str, Any]) -> Job:
+    def create_job(
+        self, iterations: int, payload: Dict[str, Any], idempotency_key: str | None = None
+    ) -> tuple[Job, bool]:
+        settings = get_settings()
+        now = asyncio.get_event_loop().time()
+        if idempotency_key:
+            info = self._idempotency.get(idempotency_key)
+            if info and now - info[1] < settings.IDEMPOTENCY_TTL_S:
+                job = self.jobs.get(info[0])
+                if job:
+                    return job, False
         job_id = str(uuid.uuid4())
         job = Job(id=job_id)
         self.jobs[job_id] = job
         job.task = asyncio.create_task(self._run_job(job, iterations, payload))
-        return job
+        if idempotency_key:
+            self._idempotency[idempotency_key] = (job_id, now)
+        return job, True
 
     async def cancel_job(self, job_id: str) -> bool:
         job = self.jobs.get(job_id)
@@ -65,11 +82,19 @@ class JobRegistry:
     async def _emit(self, job: Job, event: str, data: Dict[str, Any]) -> None:
         settings = get_settings()
         now = asyncio.get_event_loop().time()
-        envelope = {"type": event, "job_id": job.id, "ts": now, "data": data}
+        envelope = {
+            "type": event,
+            "job_id": job.id,
+            "ts": now,
+            "data": data,
+            "id": job.next_event_id,
+        }
+        job.next_event_id += 1
         try:
             await asyncio.wait_for(
                 job.queue.put(envelope), timeout=settings.SSE_BACKPRESSURE_FAIL_TIMEOUT_S
             )
+            job.buffer.append(envelope)
         except asyncio.TimeoutError:
             job.status = JobStatus.FAILED
             job.result = {"error": "sse_backpressure"}
@@ -79,7 +104,10 @@ class JobRegistry:
                 "job_id": job.id,
                 "ts": asyncio.get_event_loop().time(),
                 "data": job.result,
+                "id": job.next_event_id,
             }
+            job.next_event_id += 1
+            job.buffer.append(fail_env)
             try:
                 job.queue.put_nowait(fail_env)
             except asyncio.QueueFull:
@@ -102,6 +130,8 @@ class JobRegistry:
         try:
             job.status = JobStatus.RUNNING
             await self._emit(job, "started", {})
+            if job.status == JobStatus.FAILED:
+                return
             iterations = min(iterations, settings.MAX_ITERATIONS)
             lessons = ""
             proposals: List[str] = []
@@ -119,6 +149,8 @@ class JobRegistry:
                         "proposal": best[0] if best else None,
                     },
                 )
+                if job.status == JobStatus.FAILED:
+                    return
                 await asyncio.sleep(0.05)
             best = pareto_filter(proposals, n=1)
             job.result = {"proposal": best[0] if best else None, "lessons": lessons}

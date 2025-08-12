@@ -18,9 +18,11 @@ router = APIRouter()
 @router.post("/optimize")
 async def create_optimize_job(request: Request, iterations: int = 1) -> dict[str, str]:
     registry: JobRegistry = request.app.state.registry
-    job = registry.create_job(iterations, {})
+    idem_key = request.headers.get("Idempotency-Key")
+    job, created = registry.create_job(iterations, {}, idempotency_key=idem_key)
     request.state.job_id = job.id
-    inc("jobs_created")
+    if created:
+        inc("jobs_created")
     return {"job_id": job.id}
 
 
@@ -68,15 +70,29 @@ async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
     settings = get_settings()
 
     async def event_stream() -> AsyncGenerator[bytes, None]:
+        last_id_header = request.headers.get("last-event-id") or request.query_params.get(
+            "last_event_id"
+        )
+        last_id = int(last_id_header) if last_id_header and last_id_header.isdigit() else 0
+
         inc("sse_clients", 1)
         yield prelude_retry_ms(settings.SSE_RETRY_MS)
+        for env in list(job.buffer):
+            if env["id"] > last_id:
+                yield format_sse(env["type"], env).encode()
+                last_id = env["id"]
+                if env["type"] in SSE_TERMINALS:
+                    return
         try:
             while True:
                 try:
                     envelope = await asyncio.wait_for(
                         job.queue.get(), timeout=settings.SSE_PING_INTERVAL_S
                     )
+                    if envelope["id"] <= last_id:
+                        continue
                     yield format_sse(envelope["type"], envelope).encode()
+                    last_id = envelope["id"]
                     if envelope["type"] in SSE_TERMINALS:
                         break
                 except asyncio.TimeoutError:

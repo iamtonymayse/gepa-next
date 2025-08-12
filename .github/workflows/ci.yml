@@ -1,0 +1,20 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -U pip
+      - run: pip install "fastapi>=0.111" "uvicorn>=0.30" "pydantic>=2.7" "pydantic-settings>=2.3" "httpx>=0.27" "pytest>=8.2" "ruff>=0.5.0" "mypy>=1.10"
+      - run: ruff check .
+      - run: mypy innerloop
+      - run: pytest -q

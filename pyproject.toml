@@ -1,0 +1,15 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "N", "Q", "A"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+exclude = ["tests/"]
+
+[[tool.mypy.overrides]]
+module = ["innerloop.api.*"]
+ignore_errors = true

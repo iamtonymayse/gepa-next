@@ -11,6 +11,10 @@
 8. Track request/stream latencies with structured logs.
 9. Load-test with `hey` or `wrk` before release.
 10. Expire jobs via TTL to cap memory usage.
+11. Resume SSE streams via `Last-Event-ID`; size buffers with `SSE_BUFFER_SIZE`.
+12. Use Idempotency-Key headers to avoid duplicate jobs.
+13. Enforce CI with ruff, mypy, and pytest on every change.
+14. Prefer versioned APIs under `/v1` and plan deprecations for unversioned routes.
 
 ## 1. Process Model & Server
 **Checklist**
