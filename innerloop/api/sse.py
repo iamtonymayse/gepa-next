@@ -15,7 +15,9 @@ def format_sse(event_type: str, envelope: Dict) -> str:
         "data": envelope.get("data", {}),
     }
     return (
-        f"event: {event_type}\n" + f"data: {json.dumps(payload, separators=(',', ':'))}\n\n"
+        f"id: {envelope.get('id')}\n"
+        + f"event: {event_type}\n"
+        + f"data: {json.dumps(payload, separators=(',', ':'))}\n\n"
     )
 
 

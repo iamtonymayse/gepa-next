@@ -46,8 +46,14 @@ def create_app() -> FastAPI:
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(AuthMiddleware)
     app.add_middleware(LoggingMiddleware)
-    app.include_router(health_router)
-    app.include_router(optimize_router)
+
+    # Versioned routers
+    app.include_router(health_router, prefix="/v1", tags=["v1"])
+    app.include_router(optimize_router, prefix="/v1", tags=["v1"])
+
+    # Backward-compatible unversioned aliases (hidden from schema)
+    app.include_router(health_router, include_in_schema=False)
+    app.include_router(optimize_router, include_in_schema=False)
 
     return app
 

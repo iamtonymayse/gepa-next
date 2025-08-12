@@ -17,11 +17,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
         path = request.url.path
 
         # Public endpoints
-        if path.startswith("/healthz") or path.startswith("/readyz"):
+        if path.startswith(("/healthz", "/readyz", "/v1/healthz", "/v1/readyz")):
             return await call_next(request)
 
         # Bypass when OPENROUTER_API_KEY set and no Authorization header
-        if path.startswith("/optimize") and settings.OPENROUTER_API_KEY and "authorization" not in request.headers:
+        if (
+            path.startswith(("/optimize", "/v1/optimize"))
+            and settings.OPENROUTER_API_KEY
+            and "authorization" not in request.headers
+        ):
             return await call_next(request)
 
         if not settings.REQUIRE_AUTH:

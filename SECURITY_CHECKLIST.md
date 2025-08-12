@@ -11,6 +11,10 @@
 8. Disable CORS unless `CORS_ALLOWED_ORIGINS` is explicitly configured.
 9. Keep dependencies pinned and run `pip-audit` regularly.
 10. Purge finished/failed jobs via TTLs to minimize data retention.
+11. Resume SSE safely with `Last-Event-ID` and bounded buffers.
+12. Deduplicate job submissions via Idempotency-Key headers (watch TTL collisions).
+13. Gate commits with ruff, mypy, and pytest in CI.
+14. Version APIs under `/v1` and phase out unversioned endpoints.
 
 ## 1. Overview
 **Checklist**
