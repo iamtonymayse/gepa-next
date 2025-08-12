@@ -8,6 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .settings import get_settings
 from .api.middleware.auth import AuthMiddleware
+from .api.middleware.logging import LoggingMiddleware
+from .api.middleware.ratelimit import RateLimitMiddleware
+from .api.middleware.limits import SizeLimitMiddleware
 from .api.routers.health import router as health_router
 from .api.routers.optimize import router as optimize_router
 from .api.jobs.registry import JobRegistry
@@ -39,7 +42,10 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
+    app.add_middleware(SizeLimitMiddleware)
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(AuthMiddleware)
+    app.add_middleware(LoggingMiddleware)
     app.include_router(health_router)
     app.include_router(optimize_router)
 
