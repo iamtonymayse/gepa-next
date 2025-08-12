@@ -20,22 +20,35 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         request.state.request_id = request_id
         start = time.perf_counter()
-        # Start log
-        self.logger.info(
-            "start", extra={"method": request.method, "path": request.url.path, "request_id": request_id}
-        )
-        response = await call_next(request)
-        duration_ms = (time.perf_counter() - start) * 1000
-        response.headers["X-Request-ID"] = request_id
-        # Finish log
-        self.logger.info(
-            "finish",
-            extra={
+        response: Response | None = None
+        try:
+            response = await call_next(request)
+            return response
+        finally:
+            duration_ms = (time.perf_counter() - start) * 1000
+            client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
+            client_ip = client_ip.split(",")[0].strip()
+            query = request.url.query
+            if len(query) > 256:
+                query = query[:256] + "..."
+            headers = {k: v for k, v in request.headers.items()}
+            for key in list(headers.keys()):
+                if key.lower() == "authorization":
+                    headers[key] = "REDACTED"
+            extra = {
                 "method": request.method,
                 "path": request.url.path,
-                "status": response.status_code,
-                "request_id": request_id,
+                "status": response.status_code if response else 500,
                 "duration_ms": round(duration_ms, 2),
-            },
-        )
-        return response
+                "request_id": request_id,
+                "client_ip": client_ip,
+                "headers": headers,
+            }
+            job_id = getattr(request.state, "job_id", None)
+            if job_id:
+                extra["job_id"] = job_id
+            if query:
+                extra["query"] = query
+            self.logger.info("request", extra=extra)
+            if response:
+                response.headers["X-Request-ID"] = request_id

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import List, Optional
+import os
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
@@ -15,6 +16,7 @@ class Settings(BaseSettings):
     SSE_RETRY_MS: int = 1500
     SSE_QUEUE_MAXSIZE: int = 100
     SSE_PING_INTERVAL_S: float = 1.0
+    SSE_BACKPRESSURE_FAIL_TIMEOUT_S: float = 2.0
     MAX_ITERATIONS: int = 10
     MAX_REQUEST_BYTES: int = 64_000
     RATE_LIMIT_OPTIMIZE_RPS: float = 2.0
@@ -37,7 +39,10 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    return _get_settings()
+    settings = _get_settings()
+    if "SSE_BACKPRESSURE_FAIL_TIMEOUT_S" not in os.environ:
+        settings.SSE_BACKPRESSURE_FAIL_TIMEOUT_S = settings.SSE_PING_INTERVAL_S * 2
+    return settings
 
 
 @lru_cache

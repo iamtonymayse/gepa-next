@@ -4,12 +4,14 @@ import asyncio
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from ...domain.optimize_engine import pareto_filter
 from ...domain.reflection_multirole import update_lessons_journal
 from ...domain.reflection_runner import run_reflection
 from ...settings import get_settings
+from ..sse import SSE_TERMINALS
+from ..metrics import inc
 
 
 class JobStatus(str, Enum):
@@ -20,18 +22,18 @@ class JobStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-TERMINAL_EVENTS = {"finished", "failed", "cancelled", "shutdown"}
 
 
 @dataclass
 class Job:
     id: str
     status: JobStatus = JobStatus.PENDING
-    queue: asyncio.Queue[Tuple[str, Dict[str, Any]]] = field(init=False)
+    queue: asyncio.Queue[Dict[str, Any]] = field(init=False)
     task: Optional[asyncio.Task] = None
     result: Optional[Dict[str, Any]] = None
     created_at: float = field(default_factory=lambda: asyncio.get_event_loop().time())
     updated_at: float = field(default_factory=lambda: asyncio.get_event_loop().time())
+    terminal_emitted: bool = False
 
     def __post_init__(self) -> None:
         settings = get_settings()
@@ -50,9 +52,50 @@ class JobRegistry:
         job.task = asyncio.create_task(self._run_job(job, iterations, payload))
         return job
 
+    async def cancel_job(self, job_id: str) -> bool:
+        job = self.jobs.get(job_id)
+        if not job or job.status != JobStatus.RUNNING:
+            return False
+        if job.task:
+            job.task.cancel()
+        job.status = JobStatus.CANCELLED
+        await self._emit(job, "cancelled", {})
+        return True
+
     async def _emit(self, job: Job, event: str, data: Dict[str, Any]) -> None:
-        await job.queue.put((event, data))
-        job.updated_at = asyncio.get_event_loop().time()
+        settings = get_settings()
+        now = asyncio.get_event_loop().time()
+        envelope = {"type": event, "job_id": job.id, "ts": now, "data": data}
+        try:
+            await asyncio.wait_for(
+                job.queue.put(envelope), timeout=settings.SSE_BACKPRESSURE_FAIL_TIMEOUT_S
+            )
+        except asyncio.TimeoutError:
+            job.status = JobStatus.FAILED
+            job.result = {"error": "sse_backpressure"}
+            inc("jobs_failed")
+            fail_env = {
+                "type": "failed",
+                "job_id": job.id,
+                "ts": asyncio.get_event_loop().time(),
+                "data": job.result,
+            }
+            try:
+                job.queue.put_nowait(fail_env)
+            except asyncio.QueueFull:
+                pass
+            job.terminal_emitted = True
+            job.updated_at = fail_env["ts"]
+            return
+        if event in SSE_TERMINALS:
+            job.terminal_emitted = True
+            if event == "finished":
+                inc("jobs_finished")
+            elif event == "failed":
+                inc("jobs_failed")
+            elif event == "cancelled":
+                inc("jobs_cancelled")
+        job.updated_at = now
 
     async def _run_job(self, job: Job, iterations: int, payload: Dict[str, Any]) -> None:
         settings = get_settings()

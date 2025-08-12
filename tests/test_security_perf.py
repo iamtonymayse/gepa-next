@@ -46,6 +46,17 @@ def test_auth_matrix(monkeypatch):
         assert resp.status_code == 200
 
 
+def test_token_compare(monkeypatch):
+    client, _ = create_client(
+        monkeypatch, API_BEARER_TOKENS='["token1","token2"]', OPENROUTER_API_KEY=None
+    )
+    with client:
+        ok = client.post("/optimize", headers={"Authorization": "Bearer token1"})
+        bad = client.post("/optimize", headers={"Authorization": "Bearer nope"})
+        assert ok.status_code == 200
+        assert bad.status_code == 401
+
+
 @pytest.mark.timeout(5)
 def test_iterations_clamp(monkeypatch):
     client, settings_module = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
