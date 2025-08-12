@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-from __future__ import annotations
-
 import json
 from collections import deque
-from typing import Dict, List, Optional, Protocol, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Protocol, Tuple
 
 import aiosqlite
 
 from ...settings import get_settings
 
+if TYPE_CHECKING:  # pragma: no cover - for type checking only
+    from .registry import Job
+
 
 class JobStore(Protocol):
-    async def save_job(self, job: "Job") -> None: ...
+    async def save_job(self, job: Job) -> None: ...
 
     async def get_job(self, job_id: str) -> Optional[dict]: ...
 
@@ -39,7 +40,7 @@ class MemoryJobStore:
         self.idempotency: Dict[str, Tuple[str, float]] = {}
         self.buffer_size = settings.SSE_BUFFER_SIZE
 
-    async def save_job(self, job: "Job") -> None:
+    async def save_job(self, job: Job) -> None:
         self.jobs[job.id] = {
             "id": job.id,
             "status": job.status.value,
@@ -125,7 +126,7 @@ class SQLiteJobStore:
         await db.commit()
         return cls(db)
 
-    async def save_job(self, job: "Job") -> None:
+    async def save_job(self, job: Job) -> None:
         await self.db.execute(
             """
             INSERT INTO jobs(id, status, created_at, updated_at, result)
