@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass, field
-from collections import deque
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -13,6 +12,7 @@ from ...domain.reflection_runner import run_reflection
 from ...settings import get_settings
 from ..sse import SSE_TERMINALS
 from ..metrics import inc
+from .store import JobStore
 
 
 class JobStatus(str, Enum):
@@ -30,7 +30,6 @@ class Job:
     id: str
     status: JobStatus = JobStatus.PENDING
     queue: asyncio.Queue[Dict[str, Any]] = field(init=False)
-    buffer: deque[Dict[str, Any]] = field(init=False)
     next_event_id: int = 1
     task: Optional[asyncio.Task] = None
     result: Optional[Dict[str, Any]] = None
@@ -41,32 +40,42 @@ class Job:
     def __post_init__(self) -> None:
         settings = get_settings()
         self.queue = asyncio.Queue(maxsize=settings.SSE_QUEUE_MAXSIZE)
-        self.buffer = deque(maxlen=settings.SSE_BUFFER_SIZE)
 
 
 class JobRegistry:
-    def __init__(self) -> None:
+    def __init__(self, store: JobStore) -> None:
+        self.store = store
         self.jobs: Dict[str, Job] = {}
         self._shutdown = False
-        self._idempotency: Dict[str, tuple[str, float]] = {}
 
-    def create_job(
+    async def create_job(
         self, iterations: int, payload: Dict[str, Any], idempotency_key: str | None = None
     ) -> tuple[Job, bool]:
         settings = get_settings()
         now = asyncio.get_event_loop().time()
         if idempotency_key:
-            info = self._idempotency.get(idempotency_key)
-            if info and now - info[1] < settings.IDEMPOTENCY_TTL_S:
-                job = self.jobs.get(info[0])
+            existing = await self.store.get_idempotent(
+                idempotency_key, now, settings.IDEMPOTENCY_TTL_S
+            )
+            if existing:
+                job = self.jobs.get(existing)
                 if job:
                     return job, False
+                record = await self.store.get_job(existing)
+                if record:
+                    stub = Job(id=record["id"])
+                    stub.status = JobStatus(record["status"])
+                    stub.created_at = record["created_at"]
+                    stub.updated_at = record["updated_at"]
+                    stub.result = record.get("result")
+                    return stub, False
         job_id = str(uuid.uuid4())
         job = Job(id=job_id)
         self.jobs[job_id] = job
+        await self.store.save_job(job)
         job.task = asyncio.create_task(self._run_job(job, iterations, payload))
         if idempotency_key:
-            self._idempotency[idempotency_key] = (job_id, now)
+            await self.store.save_idempotency(idempotency_key, job_id, now)
         return job, True
 
     async def cancel_job(self, job_id: str) -> bool:
@@ -77,6 +86,7 @@ class JobRegistry:
             job.task.cancel()
         job.status = JobStatus.CANCELLED
         await self._emit(job, "cancelled", {})
+        await self.store.save_job(job)
         return True
 
     async def _emit(self, job: Job, event: str, data: Dict[str, Any]) -> None:
@@ -94,7 +104,6 @@ class JobRegistry:
             await asyncio.wait_for(
                 job.queue.put(envelope), timeout=settings.SSE_BACKPRESSURE_FAIL_TIMEOUT_S
             )
-            job.buffer.append(envelope)
         except asyncio.TimeoutError:
             job.status = JobStatus.FAILED
             job.result = {"error": "sse_backpressure"}
@@ -107,14 +116,16 @@ class JobRegistry:
                 "id": job.next_event_id,
             }
             job.next_event_id += 1
-            job.buffer.append(fail_env)
+            await self.store.save_event(job.id, fail_env["id"], fail_env)
             try:
                 job.queue.put_nowait(fail_env)
             except asyncio.QueueFull:
                 pass
             job.terminal_emitted = True
             job.updated_at = fail_env["ts"]
+            await self.store.save_job(job)
             return
+        await self.store.save_event(job.id, envelope["id"], envelope)
         if event in SSE_TERMINALS:
             job.terminal_emitted = True
             if event == "finished":
@@ -124,6 +135,7 @@ class JobRegistry:
             elif event == "cancelled":
                 inc("jobs_cancelled")
         job.updated_at = now
+        await self.store.save_job(job)
 
     async def _run_job(self, job: Job, iterations: int, payload: Dict[str, Any]) -> None:
         settings = get_settings()

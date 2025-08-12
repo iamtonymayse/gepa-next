@@ -19,7 +19,7 @@ router = APIRouter()
 async def create_optimize_job(request: Request, iterations: int = 1) -> dict[str, str]:
     registry: JobRegistry = request.app.state.registry
     idem_key = request.headers.get("Idempotency-Key")
-    job, created = registry.create_job(iterations, {}, idempotency_key=idem_key)
+    job, created = await registry.create_job(iterations, {}, idempotency_key=idem_key)
     request.state.job_id = job.id
     if created:
         inc("jobs_created")
@@ -29,10 +29,23 @@ async def create_optimize_job(request: Request, iterations: int = 1) -> dict[str
 @router.get("/optimize/{job_id}")
 async def get_job(request: Request, job_id: str) -> dict:
     registry: JobRegistry = request.app.state.registry
+    store = request.app.state.store
     job = registry.jobs.get(job_id)
     if job is None:
-        err = ErrorResponse(code="not_found", message="Job not found", request_id=request.state.request_id)
-        return JSONResponse(err.model_dump(), status_code=404)
+        record = await store.get_job(job_id)
+        if record is None:
+            err = ErrorResponse(
+                code="not_found", message="Job not found", request_id=request.state.request_id
+            )
+            return JSONResponse(err.model_dump(), status_code=404)
+        request.state.job_id = job_id
+        return {
+            "job_id": record["id"],
+            "status": record["status"],
+            "created_at": record["created_at"],
+            "updated_at": record["updated_at"],
+            "result": record.get("result"),
+        }
     request.state.job_id = job_id
     return {
         "job_id": job.id,
@@ -61,10 +74,15 @@ async def cancel_job_endpoint(request: Request, job_id: str) -> dict:
 @router.get("/optimize/{job_id}/events")
 async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
     registry: JobRegistry = request.app.state.registry
+    store = request.app.state.store
     job = registry.jobs.get(job_id)
     if job is None:
-        err = ErrorResponse(code="not_found", message="Job not found", request_id=request.state.request_id)
-        return JSONResponse(err.model_dump(), status_code=404)
+        record = await store.get_job(job_id)
+        if record is None:
+            err = ErrorResponse(
+                code="not_found", message="Job not found", request_id=request.state.request_id
+            )
+            return JSONResponse(err.model_dump(), status_code=404)
     request.state.job_id = job_id
 
     settings = get_settings()
@@ -77,12 +95,15 @@ async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
 
         inc("sse_clients", 1)
         yield prelude_retry_ms(settings.SSE_RETRY_MS)
-        for env in list(job.buffer):
-            if env["id"] > last_id:
-                yield format_sse(env["type"], env).encode()
-                last_id = env["id"]
-                if env["type"] in SSE_TERMINALS:
-                    return
+        past_events = await store.events_since(job_id, last_id)
+        terminal_sent = False
+        for env in past_events:
+            yield format_sse(env["type"], env).encode()
+            last_id = env["id"]
+            if env["type"] in SSE_TERMINALS:
+                terminal_sent = True
+        if terminal_sent or not job:
+            return
         try:
             while True:
                 try:

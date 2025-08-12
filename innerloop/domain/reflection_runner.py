@@ -13,7 +13,7 @@ async def run_reflection(prompt: str, mode: str, iteration: int) -> Dict[str, ob
         await asyncio.sleep(0.01)
         proposal = f"proposal {iteration}"
     else:
-        provider = get_provider_from_env()
+        provider = get_provider_from_env(settings)
         proposal = await provider.complete(prompt)
     return {
         "mode": mode,

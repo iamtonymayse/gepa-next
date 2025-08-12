@@ -15,6 +15,9 @@
 12. Use Idempotency-Key headers to avoid duplicate jobs.
 13. Enforce CI with ruff, mypy, and pytest on every change.
 14. Prefer versioned APIs under `/v1` and plan deprecations for unversioned routes.
+15. Persist jobs with `JOB_STORE=sqlite` (WAL); default `memory` trades durability for speed.
+16. LocalEcho is the default model provider; set `USE_MODEL_STUB=false` and `OPENROUTER_API_KEY` for OpenRouter.
+17. Pareto v1 ranks proposals by length and unique token count for deterministic results.
 
 ## 1. Process Model & Server
 **Checklist**
