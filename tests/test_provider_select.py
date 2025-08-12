@@ -19,7 +19,7 @@ def reload_env(monkeypatch, **env):
 def test_default_local_echo(monkeypatch):
     engine, runner = reload_env(monkeypatch, OPENROUTER_API_KEY=None, USE_MODEL_STUB=True)
     provider = engine.get_provider_from_env()
-    assert engine.LocalEchoProvider == type(provider)
+    assert isinstance(provider, engine.LocalEchoProvider)
     result = asyncio.run(runner.run_reflection("hello", "default", 0))
     assert result["proposal"]
 
@@ -27,7 +27,7 @@ def test_default_local_echo(monkeypatch):
 def test_stub_false_without_key(monkeypatch):
     engine, runner = reload_env(monkeypatch, OPENROUTER_API_KEY=None, USE_MODEL_STUB="false")
     provider = engine.get_provider_from_env()
-    assert engine.LocalEchoProvider == type(provider)
+    assert isinstance(provider, engine.LocalEchoProvider)
     result = asyncio.run(runner.run_reflection("hi", "default", 0))
     assert result["proposal"]
 
@@ -35,6 +35,6 @@ def test_stub_false_without_key(monkeypatch):
 def test_openrouter_provider(monkeypatch):
     engine, runner = reload_env(monkeypatch, OPENROUTER_API_KEY="fake", USE_MODEL_STUB="false")
     provider = engine.get_provider_from_env()
-    assert engine.OpenRouterProvider == type(provider)
+    assert isinstance(provider, engine.OpenRouterProvider)
     result = asyncio.run(runner.run_reflection("hi", "default", 0))
     assert isinstance(result["proposal"], str)
