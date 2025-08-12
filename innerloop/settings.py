@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     SSE_QUEUE_MAXSIZE: int = 100
     SSE_PING_INTERVAL_S: float = 1.0
     MAX_ITERATIONS: int = 10
+    MAX_REQUEST_BYTES: int = 64_000
+    RATE_LIMIT_OPTIMIZE_RPS: float = 2.0
+    RATE_LIMIT_OPTIMIZE_BURST: int = 5
     JOB_REAPER_INTERVAL_S: float = 2.0
     JOB_TTL_FINISHED_S: float = 30.0
     JOB_TTL_FAILED_S: float = 120.0
