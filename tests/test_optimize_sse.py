@@ -1,9 +1,10 @@
 import importlib
-import time
 
+import pytest
 from fastapi.testclient import TestClient
 
 
+@pytest.mark.timeout(5)
 def test_optimize_sse(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.delenv("API_BEARER_TOKENS", raising=False)
@@ -22,7 +23,6 @@ def test_optimize_sse(monkeypatch):
             assert first.startswith("retry:")
             started = False
             finished = False
-            start_time = time.time()
             for line in line_iter:
                 if line.startswith("event:"):
                     event = line.split(":", 1)[1].strip()
@@ -30,7 +30,6 @@ def test_optimize_sse(monkeypatch):
                         started = True
                     if event == "finished":
                         finished = True
-                if finished or time.time() - start_time > 5:
-                    break
+                        break
             assert started
             assert finished

@@ -1,6 +1,6 @@
 import importlib
-import time
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -46,6 +46,7 @@ def test_auth_matrix(monkeypatch):
         assert resp.status_code == 200
 
 
+@pytest.mark.timeout(5)
 def test_iterations_clamp(monkeypatch):
     client, settings_module = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
     with client:
@@ -54,7 +55,6 @@ def test_iterations_clamp(monkeypatch):
         with client.stream("GET", f"/optimize/{job_id}/events") as stream:
             line_iter = stream.iter_lines()
             progress = 0
-            start = time.time()
             for line in line_iter:
                 if line.startswith("event:"):
                     event = line.split(":", 1)[1].strip()
@@ -62,8 +62,6 @@ def test_iterations_clamp(monkeypatch):
                         progress += 1
                     if event == "finished":
                         break
-                if time.time() - start > 5:
-                    break
         assert progress >= 1
         assert progress <= settings_module.get_settings().MAX_ITERATIONS
 
