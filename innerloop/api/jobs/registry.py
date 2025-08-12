@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+import asyncio
+import uuid
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+from ...domain.optimize_engine import pareto_filter
+from ...domain.reflection_multirole import update_lessons_journal
+from ...domain.reflection_runner import run_reflection
+from ...settings import get_settings
+
+
+class JobStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    FINISHED = "finished"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+TERMINAL_EVENTS = {"finished", "failed", "cancelled", "shutdown"}
+
+
+@dataclass
+class Job:
+    id: str
+    status: JobStatus = JobStatus.PENDING
+    queue: asyncio.Queue[Tuple[str, Dict[str, Any]]] = field(init=False)
+    task: Optional[asyncio.Task] = None
+    result: Optional[Dict[str, Any]] = None
+    created_at: float = field(default_factory=lambda: asyncio.get_event_loop().time())
+    updated_at: float = field(default_factory=lambda: asyncio.get_event_loop().time())
+
+    def __post_init__(self) -> None:
+        settings = get_settings()
+        self.queue = asyncio.Queue(maxsize=settings.SSE_QUEUE_MAXSIZE)
+
+
+class JobRegistry:
+    def __init__(self) -> None:
+        self.jobs: Dict[str, Job] = {}
+        self._shutdown = False
+
+    def create_job(self, iterations: int, payload: Dict[str, Any]) -> Job:
+        job_id = str(uuid.uuid4())
+        job = Job(id=job_id)
+        self.jobs[job_id] = job
+        job.task = asyncio.create_task(self._run_job(job, iterations, payload))
+        return job
+
+    async def _emit(self, job: Job, event: str, data: Dict[str, Any]) -> None:
+        await job.queue.put((event, data))
+        job.updated_at = asyncio.get_event_loop().time()
+
+    async def _run_job(self, job: Job, iterations: int, payload: Dict[str, Any]) -> None:
+        settings = get_settings()
+        try:
+            job.status = JobStatus.RUNNING
+            await self._emit(job, "started", {})
+            iterations = min(iterations, settings.MAX_ITERATIONS)
+            lessons = ""
+            proposals: List[str] = []
+            for i in range(iterations):
+                result = await run_reflection(prompt="", mode="default", iteration=i)
+                lessons = update_lessons_journal(lessons, result.get("lessons", ""))
+                proposals.append(result.get("proposal", ""))
+                best = pareto_filter(proposals, n=1)
+                await self._emit(
+                    job,
+                    "progress",
+                    {
+                        "iteration": i + 1,
+                        "summary": result.get("summary"),
+                        "proposal": best[0] if best else None,
+                    },
+                )
+                await asyncio.sleep(0.05)
+            best = pareto_filter(proposals, n=1)
+            job.result = {"proposal": best[0] if best else None, "lessons": lessons}
+            job.status = JobStatus.FINISHED
+            await self._emit(job, "finished", job.result)
+        except asyncio.CancelledError:
+            job.status = JobStatus.CANCELLED
+            await self._emit(job, "cancelled", {})
+        except Exception as exc:  # pragma: no cover - unexpected
+            job.status = JobStatus.FAILED
+            await self._emit(job, "failed", {"error": str(exc)})
+        finally:
+            job.task = None
+
+    async def reaper_loop(self) -> None:
+        settings = get_settings()
+        while not self._shutdown:
+            now = asyncio.get_event_loop().time()
+            to_delete: List[str] = []
+            for job_id, job in list(self.jobs.items()):
+                if job.status == JobStatus.RUNNING:
+                    continue
+                ttl_map = {
+                    JobStatus.FINISHED: settings.JOB_TTL_FINISHED_S,
+                    JobStatus.FAILED: settings.JOB_TTL_FAILED_S,
+                    JobStatus.CANCELLED: settings.JOB_TTL_CANCELLED_S,
+                }
+                ttl = ttl_map.get(job.status)
+                if ttl is not None and now - job.updated_at > ttl:
+                    to_delete.append(job_id)
+            for job_id in to_delete:
+                self.jobs.pop(job_id, None)
+            await asyncio.sleep(settings.JOB_REAPER_INTERVAL_S)
+        for job in self.jobs.values():
+            await self._emit(job, "shutdown", {})
+
+    def shutdown(self) -> None:
+        self._shutdown = True
+        for job in self.jobs.values():
+            if job.task and not job.task.done():
+                job.task.cancel()
