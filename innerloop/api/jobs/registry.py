@@ -156,7 +156,8 @@ class JobRegistry:
                 await run_eval(
                     self.store,
                     base_prompt=payload.get("name") or payload.get("prompt", ""),
-                    target_model=payload.get("target_model"),
+                    target_model=payload.get("target_model")
+                    or payload.get("target_model_id"),
                     seed=int(payload.get("seed", 42)),
                     limits={
                         "max_examples": payload.get("max_examples"),
@@ -184,6 +185,11 @@ class JobRegistry:
                 return
             iterations = min(iterations, settings.MAX_ITERATIONS)
             prompt = payload.get("prompt", "")
+            target_model = (
+                payload.get("target_model")
+                or payload.get("target_model_id")
+                or settings.TARGET_MODEL_DEFAULT
+            )
             examples = payload.get("examples") or []
             objective_names: List[str] = payload.get("objectives") or ["brevity", "diversity", "coverage"]
             recombination_rate = (
@@ -235,6 +241,7 @@ class JobRegistry:
                 progress = {
                     "iteration": i + 1,
                     "proposal": chosen,
+                    "target_model": target_model,
                     "scores": {**det_scores, "judge": judge["scores"]},
                 }
                 await self._emit(job, "progress", progress)
@@ -265,7 +272,12 @@ class JobRegistry:
                 if objective_names
                 else {"judge": judge_final["scores"]}
             )
-            job.result = {"proposal": best, "lessons": [], "scores": result_scores}
+            job.result = {
+                "proposal": best,
+                "lessons": [],
+                "scores": result_scores,
+                "target_model": target_model,
+            }
             job.status = JobStatus.FINISHED
             await self._emit(job, "finished", job.result)
         except asyncio.CancelledError:

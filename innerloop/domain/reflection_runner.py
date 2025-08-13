@@ -14,7 +14,7 @@ async def run_reflection(
     iteration: int,
     *,
     examples: List[dict] | None = None,
-    target_model_id: str | None = None,
+    target_model: str | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
 ) -> Dict[str, object]:
@@ -48,7 +48,7 @@ async def run_reflection(
         proposal = await provider.complete(
             prompt,
             messages=messages,
-            model=target_model_id or settings.TARGET_DEFAULT_MODEL_ID,
+            model=target_model or settings.TARGET_DEFAULT_MODEL_ID,
             temperature=temperature,
             max_tokens=max_tokens,
         )
