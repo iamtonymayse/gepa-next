@@ -23,7 +23,25 @@ async def metricsz(request: Request) -> dict:
     return snapshot()
 
 
-@router.get("/metrics")
+@router.get(
+    "/metrics",
+    response_class=PlainTextResponse,
+    summary="Prometheus metrics",
+    description="Exposes Prometheus metrics in text format.",
+    responses={
+        200: {
+            "content": {
+                "text/plain": {
+                    "schema": {
+                        "type": "string",
+                        "description": "Prometheus exposition",
+                    }
+                }
+            },
+            "description": "Prometheus metrics",
+        }
+    },
+)
 async def metrics_prom(request: Request) -> PlainTextResponse:
     """Prometheus text exposition"""
     text = prometheus()

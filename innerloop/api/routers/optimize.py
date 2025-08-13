@@ -113,6 +113,10 @@ async def cancel_job_endpoint(request: Request, job_id: str):
     response_class=StreamingResponse,
     summary="Stream job events",
     description="Server-Sent Events stream. Use Last-Event-ID header to resume from a specific event id.",
+    responses={
+        200: {"content": {"text/event-stream": {}}},
+        404: {"model": ErrorResponse},
+    },
 )
 async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
     registry: JobRegistry = request.app.state.registry
