@@ -28,7 +28,7 @@ _OPERATORS = [_swap_words, _drop_word, _reverse]
 
 
 def mutate_prompt(base: str, k: int, seed: int) -> List[str]:
-    rnd = random.Random(seed)
+    rnd = random.Random(seed)  # nosec B311
     out: List[str] = []
     for i in range(k):
         op = _OPERATORS[i % len(_OPERATORS)]

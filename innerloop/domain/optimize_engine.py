@@ -81,7 +81,7 @@ async def rank_candidates(
             ordered = await tournament_rank(top, task, tournament_size)
             return ordered[:n]
         except Exception:
-            pass
+            return top[:n]
     return top[:n]
 
 
