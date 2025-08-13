@@ -1,0 +1,7 @@
+packs:
+  toy_qa:
+    path: toy_qa.jsonl
+    metrics: ["exact_match"]
+  toy_clf:
+    path: toy_clf.jsonl
+    metrics: ["exact_match"]

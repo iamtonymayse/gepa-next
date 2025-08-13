@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from ...domain.optimize_engine import pareto_filter
 from ...domain.reflection_multirole import update_lessons_journal
 from ...domain.reflection_runner import run_reflection
+from ...domain.gepa_loop import gepa_loop
 from ...settings import get_settings
 from ..sse import SSE_TERMINALS
 from ..metrics import inc
@@ -144,12 +145,19 @@ class JobRegistry:
             await self._emit(job, "started", {})
             if job.status == JobStatus.FAILED:
                 return
+            mode = payload.get("mode", "default")
+            if mode == "gepa":
+                result = await gepa_loop(job, self._emit, payload)
+                job.result = result
+                job.status = JobStatus.FINISHED
+                await self._emit(job, "finished", result)
+                return
             iterations = min(iterations, settings.MAX_ITERATIONS)
-            lessons = ""
+            lessons: List[str] = []
             proposals: List[str] = []
             for i in range(iterations):
-                result = await run_reflection(prompt="", mode="default", iteration=i)
-                lessons = update_lessons_journal(lessons, result.get("lessons", ""))
+                result = await run_reflection(prompt="", mode="default", iteration=i, traces=[])
+                lessons = update_lessons_journal(lessons, result.get("lessons", []))
                 proposals.append(result.get("proposal", ""))
                 best = pareto_filter(proposals, n=1)
                 await self._emit(

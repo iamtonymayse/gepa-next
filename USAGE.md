@@ -384,3 +384,17 @@ class SSEEnvelope(BaseModel):
     ts: float
     id: int | None = None
     data: Dict[str, Any]
+
+## GEPA mode
+
+Set `mode` to `gepa` and supply a dataset pack to run the evolutionary loop.
+
+```
+curl -s -X POST "http://localhost:8000/v1/optimize" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"answer:","mode":"gepa","dataset":{"name":"toy_qa"},"budget":{"max_generations":2}}'
+```
+
+The SSE stream will include additional events: `generation_started`,
+`candidate_scored`, `frontier_updated`, `lessons_updated` and
+`budget_progress`. The terminal `finished` event contains the best_prompt.
