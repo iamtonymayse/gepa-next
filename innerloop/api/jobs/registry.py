@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from ...domain.optimize_engine import rank_candidates
 from ...domain.objectives import get_objectives
 from ...domain.reflection_multirole import update_lessons_journal
 from ...domain.reflection_runner import run_reflection
@@ -16,6 +15,22 @@ from ...settings import get_settings
 from ..sse import SSE_TERMINALS
 from ..metrics import inc
 from .store import JobStore
+
+
+def _select_best(proposals: list[str]) -> str | None:
+    from ...domain.optimize_engine import pareto_filter
+
+    best = pareto_filter(proposals, n=1)
+    return best[0] if best else None
+
+
+def _progress_payload(iteration: int, result: dict, proposals: list[str]) -> dict:
+    chosen = _select_best(proposals)
+    return {
+        "iteration": iteration + 1,
+        "summary": result.get("summary"),
+        "proposal": chosen,
+    }
 
 
 class JobStatus(str, Enum):
@@ -167,7 +182,6 @@ class JobRegistry:
             objectives = get_objectives(objective_names, examples)
             lessons: List[str] = []
             proposals: List[str] = []
-            judge_results: List[Dict[str, Any]] = []
             loop = asyncio.get_event_loop()
             start = loop.time()
             deadline = start + settings.MAX_WALL_TIME_S
@@ -202,12 +216,7 @@ class JobRegistry:
                 proposals.append(proposal_text)
                 det_scores = scores_for(proposal_text) if objective_names else {}
                 judge = await judge_scores(prompt, proposal_text, examples, objective_names)
-                judge_results.append(judge["scores"])
-                progress_data = {
-                    "iteration": i + 1,
-                    "summary": result.get("summary"),
-                    "proposal": proposal_text,
-                }
+                progress_data = _progress_payload(i, result, proposals)
                 if objective_names:
                     progress_data["scores"] = {**det_scores, "judge": judge["scores"]}
                 if examples:
@@ -219,26 +228,16 @@ class JobRegistry:
                     await self._emit(job, "failed", job.result)
                     return
                 await asyncio.sleep(0.05)
-            avg_scores = [
-                sum(j.get(obj, 0.0) for obj in objective_names) / len(objective_names)
-                for j in judge_results
-            ]
-            max_avg = max(avg_scores) if avg_scores else 0.0
-            candidates = [i for i, s in enumerate(avg_scores) if s == max_avg]
-            if len(candidates) > 1:
-                tied_texts = [proposals[i] for i in candidates]
-                best_text = rank_candidates(
-                    tied_texts, objectives if objectives else None, n=1
-                )[0]
-                best_index = proposals.index(best_text)
-            else:
-                best_index = candidates[0] if candidates else 0
-                best_text = proposals[best_index] if proposals else ""
-            det = scores_for(best_text) if objective_names else {}
-            judge_best = judge_results[best_index] if judge_results else {}
-            result_scores = {**det, "judge": judge_best} if objective_names else {"judge": judge_best}
+            final_best = _select_best(proposals) or ""
+            det = scores_for(final_best) if objective_names else {}
+            judge_final = await judge_scores(prompt, final_best, examples, objective_names)
+            result_scores = (
+                {**det, "judge": judge_final["scores"]}
+                if objective_names
+                else {"judge": judge_final["scores"]}
+            )
             job.result = {
-                "proposal": best_text,
+                "proposal": final_best,
                 "lessons": lessons,
                 "scores": result_scores,
             }

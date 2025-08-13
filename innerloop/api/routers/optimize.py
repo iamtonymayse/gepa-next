@@ -26,7 +26,7 @@ router = APIRouter()
     "/optimize",
     response_model=OptimizeResponse,
     summary="Create optimization job",
-    description="Create an optimization job. Use optional Idempotency-Key header to dedupe requests.",
+    description="Create an optimization job. Use optional Idempotency-Key header to dedupe submissions.",
     responses={401: {"model": APIError}, 429: {"model": APIError}, 413: {"model": APIError}},
 )
 async def create_optimize_job(
