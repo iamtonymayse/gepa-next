@@ -39,7 +39,12 @@ class Settings(BaseSettings):
     TARGET_DEFAULT_MODEL_ID: str = "gpt-4o-mini"
     JUDGE_PROVIDER: Literal["openrouter", "openai"] = "openrouter"
     JUDGE_MODEL_ID: str = "gpt-5"
-    JUDGE_TIMEOUT_S: float = 10.0
+    JUDGE_TIMEOUT_S: float = 15.0
+    TARGET_MODEL_DEFAULT: str = "openrouter/gpt-4o-mini"
+    MAX_CANDIDATES: int = 8
+    MAX_EXAMPLES_PER_JOB: int = 16
+    MAX_MUTATIONS_PER_ROUND: int = 4
+    DETERMINISTIC_SEED: int = 13
     MAX_WALL_TIME_S: float = 15.0
     JOB_STORE: Literal["memory", "sqlite"] = "memory"
     SQLITE_PATH: str = "gepa.db"
