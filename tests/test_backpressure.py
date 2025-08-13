@@ -34,6 +34,6 @@ def test_backpressure_failure(monkeypatch):
                 break
             time.sleep(0.02)
 
-        assert state.get("status") == "failed"
-        assert state.get("result", {}).get("error") in {"sse_backpressure", "sse_backpressure"}
+    assert state.get("status") == "failed"
+    assert state.get("result", {}).get("error") == "sse_backpressure"
 
