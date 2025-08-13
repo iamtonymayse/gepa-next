@@ -6,35 +6,26 @@ from typing import Dict, List
 from ..settings import get_settings
 from .engine import get_provider_from_env
 
-# Minimal role-specific prompt templates (short, deterministic, no CoT).
 ROLE_TEMPLATES = {
     "author": (
-        "[ROLE] Author\n"
-        "[TASK] Draft a single improved prompt for the target task.\n"
-        "[CONSTRAINTS] Be clear, concise, no chain-of-thought.\n"
-        "Base:\n{base}\n\nExamples:\n{examples}\n"
-        "[OUTPUT] Return ONLY the revised prompt text."
+        "ROLE: Author\n"
+        "Task: Improve the candidate strictly for the task.\n"
+        "Constraints: No chain-of-thought. ≤120 tokens. Output ONLY the revised candidate text.\n"
     ),
     "reviewer": (
-        "[ROLE] Reviewer\n"
-        "[TASK] Identify 3 concrete issues with the prompt and 3 actionable fixes.\n"
-        "[CONSTRAINTS] Bullet points, terse.\n"
-        "Prompt:\n{base}\n\nExamples:\n{examples}\n"
-        "[OUTPUT] One line per item."
+        "ROLE: Reviewer\n"
+        "Task: Provide 3 crisp defects blocking acceptance for the task.\n"
+        'Constraints: No chain-of-thought. ≤80 tokens. Output JSON: {{"defects":["...","...","..."]}}\n'
     ),
     "planner": (
-        "[ROLE] Planner\n"
-        "[TASK] Propose a short edit plan (≤3 edits) to strengthen the prompt.\n"
-        "[CONSTRAINTS] Use operator names if possible: "
-        "reorder_sections, trim_examples, swap_examples, toggle_chain_of_thought.\n"
-        "Prompt:\n{base}\n\nExamples:\n{examples}\n"
-        "[OUTPUT] JSON list of edit ops with optional args."
+        "ROLE: Planner\n"
+        "Task: Provide a short plan to address reviewer defects.\n"
+        'Constraints: No chain-of-thought. ≤80 tokens. Output JSON: {{"plan":"..."}}\n'
     ),
     "revision": (
-        "[ROLE] Reviser\n"
-        "[TASK] Apply the edit plan to produce the final revised prompt.\n"
-        "Prompt:\n{base}\n\nEdit plan:\n{plan}\n"
-        "[OUTPUT] Return ONLY the revised prompt text."
+        "ROLE: Reviser\n"
+        "Task: Apply the plan to produce a revised candidate.\n"
+        "Constraints: No chain-of-thought. ≤120 tokens. Output ONLY the revised candidate text.\n"
     ),
 }
 
@@ -78,9 +69,7 @@ async def run_reflection(
     else:
         provider = get_provider_from_env(settings)
         # Pass model when provided; providers ignore unknown kwargs.
-        proposal = await provider.complete(
-            role_prompt, model=target_model
-        )  # type: ignore[call-arg]
+        proposal = await provider.complete(role_prompt, model=target_model)  # type: ignore[call-arg]
         edits = [{"op": "reorder_sections", "args": {}, "seed": iteration}]
         lessons = [f"{mode}: revision applied"]
 

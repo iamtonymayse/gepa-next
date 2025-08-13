@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
-from typing import Any, Dict, List, Iterable, Tuple
-
 import logging
+import time
+from typing import Any, Dict, Iterable, List, Tuple
 
-from .engine import get_judge_provider, get_provider_from_env
-from ..settings import get_settings, Settings
-from .judge_prompts import PAIRWISE_TEMPLATE
 from ..api.metrics import inc
+from ..settings import Settings, get_settings
+from .engine import get_judge_provider
+from .judge_prompts import PAIRWISE_TEMPLATE
 
 log = logging.getLogger(__name__)
 
@@ -30,13 +29,9 @@ def _build_judge_prompt(
         f"Candidate: {candidate}",
     ]
     if examples:
-        ex_str = "; ".join(
-            f"input: {e.get('input')}, expected: {e.get('expected', '')}" for e in examples
-        )
+        ex_str = "; ".join(f"input: {e.get('input')}, expected: {e.get('expected', '')}" for e in examples)
         parts.append(f"Examples: {ex_str}.")
-        parts.append(
-            "Coverage should reflect how well candidate addresses prompt and examples."
-        )
+        parts.append("Coverage should reflect how well candidate addresses prompt and examples.")
     return "\n".join(parts)
 
 
@@ -131,13 +126,28 @@ async def judge_pair(task: str, a: str, b: str, store=None) -> Dict[str, Any]:
     else:
         await _throttle()
         CALLS += 1
-        provider = get_provider_from_env(s)
+        provider = get_judge_provider(s)
         prompt = PAIRWISE_TEMPLATE.format(task=task, a=a, b=b)
-        out = await provider.complete(prompt, model=s.JUDGE_MODEL_ID)
+        try:
+            out = await provider.complete(prompt, model=s.JUDGE_MODEL_ID)
+        except Exception:
+            inc("judge_failures")
+            winner = "A" if len(a) <= len(b) else "B"
+            return {
+                "winner": winner,
+                "confidence": 0.5,
+                "justification": "fallback",
+            }
         try:
             res = json.loads(out.strip())
         except Exception:
-            res = {"winner": "A", "confidence": 0.5, "justification": "parse-fallback"}
+            inc("judge_failures")
+            winner = "A" if len(a) <= len(b) else "B"
+            return {
+                "winner": winner,
+                "confidence": 0.5,
+                "justification": "fallback",
+            }
     if store:
         confidence_val: Any = res.get("confidence", 0.5)
         try:
@@ -146,6 +156,11 @@ async def judge_pair(task: str, a: str, b: str, store=None) -> Dict[str, Any]:
             confidence = 0.5
         await store.set_judge_cached(*key, res["winner"], confidence)
     return res
+
+
+async def judge(task: str, a: str, b: str, store=None) -> Dict[str, Any]:
+    """Compatibility shim for older callers expecting ``judge``."""
+    return await judge_pair(task, a, b, store)
 
 
 async def judge_score(prompt: str, candidate: str, examples: List[dict] | None, objectives: List[str] | None) -> float:
@@ -160,9 +175,7 @@ async def judge_score(prompt: str, candidate: str, examples: List[dict] | None, 
 class JudgeStub:
     """Deterministic, offline judge for tests and local development."""
 
-    async def score(
-        self, *, prompt: str, proposal: str, rubric: str | None = None
-    ) -> float:
+    async def score(self, *, prompt: str, proposal: str, rubric: str | None = None) -> float:
         toks = proposal.lower().split()
         uniq = len(set(toks))
         return max(0.0, 100.0 - len(proposal)) + uniq
@@ -170,10 +183,7 @@ class JudgeStub:
     async def rank(
         self, *, prompt: str, proposals: Iterable[str], rubric: str | None = None
     ) -> List[Tuple[str, float]]:
-        items = [
-            (p, await self.score(prompt=prompt, proposal=p, rubric=rubric))
-            for p in proposals
-        ]
+        items = [(p, await self.score(prompt=prompt, proposal=p, rubric=rubric)) for p in proposals]
         items.sort(key=lambda t: t[1], reverse=True)
         return items
 
@@ -194,9 +204,7 @@ class JudgeLLM:
         # Constructing the provider is side-effect free; we won't call it in stubbed CI.
         self._provider = get_judge_provider(self._settings)
 
-    async def score(
-        self, *, prompt: str, proposal: str, rubric: str | None = None
-    ) -> float:
+    async def score(self, *, prompt: str, proposal: str, rubric: str | None = None) -> float:
         # We don't have explicit objective names here; use the built-in defaults path.
         data = await judge_scores(prompt, proposal, examples=None, objectives=None)
         return float(sum(data.get("scores", {}).values()))

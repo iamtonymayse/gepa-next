@@ -12,6 +12,7 @@ _counters: Dict[str, int] = {
     "sse_clients": 0,
     "rate_limited": 0,
     "oversize_rejected": 0,
+    "judge_failures": 0,
 }
 
 _hist: Dict[str, List[float]] = {}
