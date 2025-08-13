@@ -370,38 +370,53 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--fast", action="store_true", help="skip heavier checks")
     args = parser.parse_args(list(argv) if argv is not None else None)
+
     proj = detect_proj_dir()
-    ruff = check_ruff(proj)
-    mypy = check_mypy(proj)
-    bandit = check_bandit(proj)
-    radon = check_radon(proj) if not args.fast else {"cc": {}, "mi": {}}
-    run_pytest_smoke(proj)
-    cov = run_pytest_cov(proj) if not args.fast else {"coverage": 0, "out": "", "err": ""}
-    fastapi_info, fa_findings = fastapi_checks(proj)
-    smell_findings = scan_smells(proj)
-    findings = fa_findings + smell_findings
-    score = {"ruff": ruff["issues"], "mypy": mypy["errors"], "bandit": bandit["issues"],
-             "complexity": sum(len(v) for v in radon.get("cc", {}).values() if isinstance(v, list)),
-             "coverage": cov.get("coverage", 0)}
-    by_sev: Dict[str, int] = {}
-    for f in findings:
-        by_sev[f.severity] = by_sev.get(f.severity, 0) + 1
-    summary = [
-        f"{sev}: {cnt} issue(s)" for sev, cnt in sorted(by_sev.items(), reverse=True)
-    ][:3]
-    appendices = {
-        "ruff": json.dumps(ruff["issues"], indent=2)[:1000],
-        "mypy": "\n".join(mypy["errors"][:20]),
-        "bandit": json.dumps(bandit["issues"], indent=2)[:1000],
-    }
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     reports = proj / "reports"
     reports.mkdir(parents=True, exist_ok=True)
     report = reports / f"taste_and_smell_report_{ts}.md"
-    report.write_text(
-        render_markdown(summary, score, fastapi_info, findings, appendices),
-        encoding="utf-8",
-    )
+
+    try:
+        ruff = check_ruff(proj)
+        mypy = check_mypy(proj)
+        bandit = check_bandit(proj)
+        radon = check_radon(proj) if not args.fast else {"cc": {}, "mi": {}}
+        run_pytest_smoke(proj)
+        cov = run_pytest_cov(proj) if not args.fast else {"coverage": 0, "out": "", "err": ""}
+        fastapi_info, fa_findings = fastapi_checks(proj)
+        smell_findings = scan_smells(proj)
+        findings = fa_findings + smell_findings
+        score = {
+            "ruff": ruff["issues"],
+            "mypy": mypy["errors"],
+            "bandit": bandit["issues"],
+            "complexity": sum(
+                len(v) for v in radon.get("cc", {}).values() if isinstance(v, list)
+            ),
+            "coverage": cov.get("coverage", 0),
+        }
+        by_sev: Dict[str, int] = {}
+        for f in findings:
+            by_sev[f.severity] = by_sev.get(f.severity, 0) + 1
+        summary = [
+            f"{sev}: {cnt} issue(s)" for sev, cnt in sorted(by_sev.items(), reverse=True)
+        ][:3]
+        appendices = {
+            "ruff": json.dumps(ruff["issues"], indent=2)[:1000],
+            "mypy": "\n".join(mypy["errors"][:20]),
+            "bandit": json.dumps(bandit["issues"], indent=2)[:1000],
+        }
+        content = render_markdown(
+            summary, score, fastapi_info, findings, appendices
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        import traceback
+
+        tb = traceback.format_exc(limit=5)
+        content = f"# Taste and Smell Audit\n\nError during audit: {exc}\n\n````\n{tb}\n````"
+
+    report.write_text(content, encoding="utf-8")
     print(f"Wrote {report}")
     return 0
 
