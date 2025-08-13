@@ -1,7 +1,18 @@
 from __future__ import annotations
 
-import json
 from typing import Dict
+
+try:
+    import orjson  # type: ignore
+
+    def json_dumps(obj: Dict) -> str:
+        return orjson.dumps(obj).decode("utf-8")
+
+except Exception:  # pragma: no cover
+    import json
+
+    def json_dumps(obj: Dict) -> str:
+        return json.dumps(obj, separators=(",", ":"))
 
 SSE_TERMINALS = {"finished", "failed", "cancelled", "shutdown"}
 
@@ -16,11 +27,7 @@ def format_sse(event_type: str, envelope: Dict) -> str:
         "data": envelope.get("data", {}),
     }
     id_line = f"id: {envelope['id']}\n" if envelope.get("id") is not None else ""
-    return (
-        id_line
-        + f"event: {event_type}\n"
-        + f"data: {json.dumps(payload, separators=(',', ':'))}\n\n"
-    )
+    return id_line + f"event: {event_type}\n" + f"data: {json_dumps(payload)}\n\n"
 
 
 def prelude_retry_ms(ms: int) -> bytes:

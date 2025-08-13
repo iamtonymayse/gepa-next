@@ -58,8 +58,7 @@ Stable streams reduce reconnects and ensure timely delivery.
 
 ## 4. Serialization & Payloads
 **Checklist**
-- Use compact JSON (`separators=(',', ':')`).
-- Consider `orjson` for heavy workloads (optional).
+- Use compact JSON (`separators=(',', ':')`); SSE falls back to `orjson` when installed for faster dumps.
 
 **Why it matters**
 Smaller payloads mean less bandwidth and CPU.
@@ -73,6 +72,7 @@ Smaller payloads mean less bandwidth and CPU.
 - Jobs stored in registry with TTLs (`JOB_TTL_*`).
 - Keep job objects lean; avoid storing large payloads.
 - Periodic reaper removes old jobs.
+- OpenRouter provider pools a single `httpx.AsyncClient` with connection limits/timeouts.
 
 **Why it matters**
 Prevents memory leaks and keeps steady-state footprint predictable.

@@ -34,6 +34,13 @@ async def create_optimize_job(
     body: OptimizeRequest,
     iterations: int = 1,
 ) -> OptimizeResponse:
+    if iterations < 1:
+        return error_response(
+            ErrorCode.validation_error,
+            "iterations must be >= 1",
+            422,
+            request_id=request.state.request_id,
+        )
     registry: JobRegistry = request.app.state.registry
     idem_key = request.headers.get("Idempotency-Key")
     job, created = await registry.create_job(
