@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Sequence, cast
 
 from ..settings import get_settings
 from .candidate import Candidate, apply_edits
-from .engine import get_provider_from_env
+from .engine import get_target_provider
 from .eval import evaluate_batch
 from .examples import load_pack
 from .operators import OPERATORS
@@ -24,7 +24,7 @@ class Budget:
 
 async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
     settings = get_settings()
-    provider = get_provider_from_env(settings)
+    provider = get_target_provider(settings)
     dataset = cast(Dict[str, Any], payload.get("dataset", {"name": "toy_qa"}))
     pack = load_pack(str(dataset.get("name", "toy_qa")))
     budget = Budget(**cast(Dict[str, Any], payload.get("budget", {})))
@@ -77,7 +77,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
             },
         )
         refl: Dict[str, Any] = await run_reflection(
-            "", "gepa", gen, examples=None, model_params=None
+            "", "gepa", gen, examples=None
         )
         lessons = update_lessons_journal(lessons, cast(List[str], refl.get("lessons", [])))
         await emit(job, "lessons_updated", {"count": len(lessons), "sample": lessons[:3]})
