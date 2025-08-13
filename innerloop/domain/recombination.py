@@ -4,7 +4,7 @@ import random
 
 
 def crossover(a: str, b: str, seed: int) -> str:
-    rnd = random.Random(seed)
+    rnd = random.Random(seed)  # nosec B311
     sa, sb = a.split(), b.split()
     if not sa or not sb:
         return a or b
@@ -16,7 +16,7 @@ def crossover(a: str, b: str, seed: int) -> str:
 def recombine(pool: List[str], rate: float, seed: int) -> List[str]:
     if rate <= 0.0 or len(pool) < 2:
         return []
-    rnd = random.Random(seed)
+    rnd = random.Random(seed)  # nosec B311
     out: List[str] = []
     pairs: List[Tuple[str, str]] = []
     for _ in range(max(1, int(len(pool) * rate))):
