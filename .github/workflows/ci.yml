@@ -134,8 +134,8 @@ jobs:
 
       - name: Secret scan (gitleaks)
         uses: gitleaks/gitleaks-action@v2
-        with:
-          args: --no-git -v
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Upload examples
         uses: actions/upload-artifact@v4
