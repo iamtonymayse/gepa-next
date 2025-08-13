@@ -23,7 +23,7 @@ Production-lean prompt optimization service implementing GEPA-style evolution wi
 ## Judge vs Target
 
 - **Judge**: fixed at `openai:gpt-5-judge` (configured via settings). The judge model is not overrideable via API.
-- **Target**: selected per request via `OptimizeRequest.target_model_id`. If omitted, the service uses the default target model from settings.
+- **Target**: selected per request via `OptimizeRequest.target_model_id`. If omitted, the service uses the default target model `TARGET_MODEL_DEFAULT` from settings.
 - **Providers**: Judge uses OpenRouter with OpenAI pass-through; target uses the configured provider for the chosen model.
 
 ## Example Session (copy-paste)
