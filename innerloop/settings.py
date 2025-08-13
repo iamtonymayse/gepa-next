@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from functools import lru_cache
-from typing import List, Optional, Literal
-import os
 import json
 import json as _json
+import os
+from functools import lru_cache
+from typing import List, Literal, Optional
 
-from pydantic import Field, field_validator, computed_field
+from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -17,10 +17,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     CORS_ALLOWED_ORIGINS: List[str] = Field(default_factory=list)
     SSE_RETRY_MS: int = 1500
-    SSE_QUEUE_MAXSIZE: int = 100
     SSE_PING_INTERVAL_S: float = 1.0
     SSE_BACKPRESSURE_FAIL_TIMEOUT_S: float = 2.0
-    SSE_BUFFER_SIZE: int = 200
+    # Max number of SSE events buffered per job before producers apply backpressure.
+    SSE_BUFFER_SIZE: int = 256
     MAX_ITERATIONS: int = 10
     MAX_REQUEST_BYTES: int = 64_000
     RATE_LIMIT_PER_MIN: int = 60
@@ -67,8 +67,7 @@ class Settings(BaseSettings):
     TARGET_DEFAULT_MODEL: str = "openai:gpt-4o-mini"  # default target; API may override
     COST_TRACKING_ENABLED: bool = True
     MODEL_PRICES_JSON: str = (
-        '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},'
-        '"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
+        '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
     )
     EVAL_MAX_EXAMPLES: int = 100
     EVAL_MAX_CONCURRENCY: int = 8

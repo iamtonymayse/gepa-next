@@ -6,7 +6,7 @@
 3. Enforce per-token rate limiting on `POST /v1/optimize`.
 4. Drop requests with bodies over `MAX_REQUEST_BYTES` (~64 KB default).
 5. Clamp job iterations to `MAX_ITERATIONS` to avoid runaway loops.
-6. Limit SSE queue size (`SSE_QUEUE_MAXSIZE`) and fail after `SSE_BACKPRESSURE_FAIL_TIMEOUT_S`.
+6. Limit SSE queue size (`SSE_BUFFER_SIZE`) and fail after `SSE_BACKPRESSURE_FAIL_TIMEOUT_S`.
 7. Serve over TLS via a trusted proxy; set strict headers for SSE and HTTP.
 8. Disable CORS unless `CORS_ALLOWED_ORIGINS` is explicitly configured.
 9. Keep dependencies pinned and run `pip-audit` regularly.
@@ -73,7 +73,7 @@ Stops resource exhaustion and unexpected code paths.
 ## 5. Rate Limiting / DoS Resilience
 **Checklist**
 - Token bucket keyed by bearer token (or anonymous-openrouter) on `POST /v1/optimize`.
-- Bounded SSE queue (`SSE_QUEUE_MAXSIZE`).
+- Bounded SSE queue (`SSE_BUFFER_SIZE`).
 
 **Why it matters**
 Mitigates burst traffic and unbounded memory growth.

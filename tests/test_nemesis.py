@@ -5,6 +5,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+
 @pytest.mark.timeout(5)
 def test_slow_consumer_completes(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
@@ -14,11 +15,13 @@ def test_slow_consumer_completes(monkeypatch):
     monkeypatch.delenv("API_BEARER_TOKENS", raising=False)
     monkeypatch.setenv("REQUIRE_AUTH", "false")
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     with TestClient(main.app) as client:
-        job_id = client.post("/v1/optimize", json={"prompt":"x"}, params={"iterations":2}).json()["job_id"]
+        job_id = client.post("/v1/optimize", json={"prompt": "x"}, params={"iterations": 2}).json()["job_id"]
         with client.stream("GET", f"/v1/optimize/{job_id}/events") as stream:
             it = stream.iter_lines()
             assert next(it).startswith("retry:")
@@ -30,21 +33,24 @@ def test_slow_consumer_completes(monkeypatch):
                     break
             assert seen_finished
 
+
 @pytest.mark.timeout(5)
 def test_stalled_consumer_triggers_backpressure(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
-    monkeypatch.setenv("SSE_QUEUE_MAXSIZE", "2")
+    monkeypatch.setenv("SSE_BUFFER_SIZE", "2")
     monkeypatch.setenv("SSE_PING_INTERVAL_S", "0.05")
     monkeypatch.setenv("SSE_BACKPRESSURE_FAIL_TIMEOUT_S", "0.001")
     monkeypatch.setenv("GEPA_DETERMINISTIC", "true")
     monkeypatch.delenv("API_BEARER_TOKENS", raising=False)
     monkeypatch.setenv("REQUIRE_AUTH", "false")
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     with TestClient(main.app) as client:
-        job_id = client.post("/v1/optimize", json={"prompt":"x"}, params={"iterations":10}).json()["job_id"]
+        job_id = client.post("/v1/optimize", json={"prompt": "x"}, params={"iterations": 10}).json()["job_id"]
         with client.stream("GET", f"/v1/optimize/{job_id}/events") as stream:
             time.sleep(0.7)  # stall reading to overflow queue
             lines = [ln for ln in stream.iter_lines() if ln.startswith("data:")]
