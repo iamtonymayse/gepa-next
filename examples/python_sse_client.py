@@ -1,4 +1,5 @@
 import os
+
 from sseclient import SSEClient
 
 BASE = os.getenv("BASE_URL", "http://localhost:8000")

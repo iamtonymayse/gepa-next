@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 import time
 import uuid
-import re
 from typing import Callable
 
 from fastapi import Request, Response
