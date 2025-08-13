@@ -18,11 +18,11 @@ from .api.routers.health import router as health_router
 from .api.routers.optimize import router as optimize_router
 from .api.routers.admin import router as admin_router
 from .api.routers.examples import router as examples_router
+from .api.routers.eval import router as eval_router
 from .api.jobs.registry import JobRegistry
 from .api.jobs.store import JobStore, MemoryJobStore, SQLiteJobStore
 from .api.models import ErrorCode, error_response
 from .domain.engine import close_all_providers
-from .domain.examples_store import ExampleStore
 
 
 @asynccontextmanager
@@ -36,7 +36,6 @@ async def lifespan(app: FastAPI):
     registry = JobRegistry(store)
     app.state.registry = registry
     app.state.store = store
-    app.state.examples = ExampleStore()
     reaper_task = asyncio.create_task(registry.reaper_loop())
     try:
         yield
@@ -74,11 +73,13 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/v1", tags=["v1"])
     app.include_router(optimize_router, prefix="/v1", tags=["v1"])
     app.include_router(examples_router, prefix="/v1", tags=["examples"])
+    app.include_router(eval_router, prefix="/v1", tags=["eval"])
     app.include_router(admin_router, prefix="/v1/admin", tags=["admin"])
 
     # Backward-compatible unversioned aliases (hidden from schema)
     app.include_router(health_router, include_in_schema=False)
     app.include_router(optimize_router, include_in_schema=False)
+    app.include_router(eval_router, include_in_schema=False)
 
     @app.exception_handler(RequestValidationError)
     async def validation_handler(

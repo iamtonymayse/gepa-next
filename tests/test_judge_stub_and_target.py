@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 def test_judge_stub_and_target(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
     monkeypatch.setenv("USE_MODEL_STUB", "true")
-    monkeypatch.setenv("JUDGE_MODEL_ID", "gpt-5")
+    monkeypatch.setenv("JUDGE_MODEL_ID", "openai:gpt-5-judge")
     import innerloop.settings as settings
     importlib.reload(settings)
     import innerloop.main as main

@@ -58,7 +58,7 @@ async def tournament_rank(cands: List[str], task: str, k: int) -> List[str]:
             group = pool[i : i + k]
             champ = group[0]
             for challenger in group[1:]:
-                res = await judge_pair(champ, challenger, task)
+                res = await judge_pair(task, champ, challenger)
                 champ = res.get("winner", champ)
             next_round.append(champ)
         pool = next_round

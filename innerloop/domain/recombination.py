@@ -6,7 +6,7 @@ import random
 def crossover(a: str, b: str, seed: int) -> str:
     rnd = random.Random(seed)  # nosec B311
     sa, sb = a.split(), b.split()
-    if not sa or not sb:
+    if len(sa) < 2 or len(sb) < 2:
         return a or b
     cut_a, cut_b = rnd.randrange(1, len(sa)), rnd.randrange(1, len(sb))
     child = " ".join(sa[:cut_a] + sb[cut_b:])

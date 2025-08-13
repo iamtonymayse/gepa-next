@@ -4,8 +4,9 @@ from functools import lru_cache
 from typing import List, Optional, Literal
 import os
 import json
+import json as _json
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, computed_field
 from pydantic_settings import BaseSettings
 
 
@@ -38,7 +39,7 @@ class Settings(BaseSettings):
     MODEL_ID: str = "gpt-4o-mini"
     TARGET_DEFAULT_MODEL_ID: str = "gpt-4o-mini"
     JUDGE_PROVIDER: Literal["openrouter", "openai"] = "openrouter"
-    JUDGE_MODEL_ID: str = "gpt-5"
+    JUDGE_MODEL_ID: str = "openai:gpt-5-judge"  # fixed judge, not API-settable
     JUDGE_TIMEOUT_S: float = 15.0
     JUDGE_CACHE_SIZE: int = 2048
     JUDGE_QPS_MAX: float = 5.0
@@ -55,6 +56,18 @@ class Settings(BaseSettings):
     MAX_WALL_TIME_S: float = 15.0
     JOB_STORE: Literal["memory", "sqlite"] = "memory"
     SQLITE_PATH: str = "gepa.db"
+    TARGET_DEFAULT_MODEL: str = "openai:gpt-4o-mini"  # default target; API may override
+    COST_TRACKING_ENABLED: bool = True
+    MODEL_PRICES_JSON: str = '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
+    EVAL_MAX_EXAMPLES: int = 100
+    EVAL_MAX_CONCURRENCY: int = 8
+
+    @computed_field
+    def MODEL_PRICES(self) -> dict[str, dict[str, float]]:
+        try:
+            return _json.loads(self.MODEL_PRICES_JSON)
+        except Exception:
+            return {}
 
     @field_validator("API_BEARER_TOKENS", "CORS_ALLOWED_ORIGINS", mode="before")
     @classmethod
@@ -88,6 +101,8 @@ def get_settings() -> Settings:
     settings.EARLY_STOP_PATIENCE = max(1, int(settings.EARLY_STOP_PATIENCE))
     settings.RETRIEVAL_MAX_EXAMPLES = max(0, int(settings.RETRIEVAL_MAX_EXAMPLES))
     settings.RETRIEVAL_MIN_LEN = max(0, int(settings.RETRIEVAL_MIN_LEN))
+    settings.EVAL_MAX_EXAMPLES = max(1, int(settings.EVAL_MAX_EXAMPLES))
+    settings.EVAL_MAX_CONCURRENCY = max(1, int(settings.EVAL_MAX_CONCURRENCY))
     return settings
 
 

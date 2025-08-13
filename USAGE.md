@@ -135,6 +135,16 @@ Judge vs Target model
 - **BYO OpenAI key**: set `OPENAI_API_KEY` on the server to pass through as `X-OpenAI-Api-Key` to OpenRouter.
 - **Target model**: choose per request with `target_model_id`; if omitted, server uses `TARGET_DEFAULT_MODEL_ID`.
 
+Examples CRUD
+- `POST /v1/examples/bulk` – upsert examples in bulk
+- `GET /v1/examples` – list examples with pagination
+- `DELETE /v1/examples/{id}` – remove an example
+
+Evaluation jobs
+- `POST /v1/eval/start` with body `{ name, target_model?, max_examples?, seed?, tournament_size?, recombination_rate?, early_stop_patience? }`
+- `GET /v1/eval/{job_id}/events` – stream `started`, `eval_started`, `eval_case`, optional `early_stop`, `eval_finished`, and terminal `finished`
+- Judge model is fixed via `JUDGE_MODEL_ID` in settings; target model may be provided per request
+
 Full request with examples and objectives:
 ```json
 {
