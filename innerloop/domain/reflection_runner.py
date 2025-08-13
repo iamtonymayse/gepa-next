@@ -23,7 +23,8 @@ async def run_reflection(
         await asyncio.sleep(0.01)
         parts = [prompt, str(iteration)]
         for ex in (examples or [])[:2]:
-            parts.append(hashlib.md5(ex.get("input", "").encode()).hexdigest()[:8])
+            hashed = hashlib.sha256(ex.get("input", "").encode()).hexdigest()[:8]
+            parts.append(hashed)
         proposal = " | ".join(parts)
     else:
         provider = get_target_provider(settings)
