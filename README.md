@@ -13,18 +13,31 @@ Production-lean prompt optimization service implementing GEPA-style evolution wi
 - GET  /v1/metricsz — metrics (JSON)
 - GET  /v1/metrics — metrics (text/plain)
 
-## SSE Contract
+## Admin Endpoints
+- `GET /v1/admin/jobs`
+- `GET /v1/admin/jobs/{job_id}`
+- `DELETE /v1/admin/jobs/{job_id}`
+- `POST /v1/admin/jobs/{job_id}/cancel`
 
-- Response Content-Type: text/event-stream
-- Server prelude includes `retry: <ms>`; idle pings are sent as a single `:` line followed by a blank line.
-- Clients may resume by sending `Last-Event-ID: <event_id>` or `?last_event_id=` query param.
-- Terminal events are one of: `finished`, `failed`, `cancelled`.
+## SSE Streaming & Resume
+The events endpoint is Server-Sent Events (`text/event-stream`) with:
+- Prelude `retry: <ms>` sent first.
+- Idle pings `:\n\n` when no events are pending.
+- Terminal types: `finished`, `failed`, `cancelled`.
+- Resume using the `Last-Event-ID` header or `last_event_id` query param.
+
+**Resume example:**
+```bash
+curl -N \
+  -H "Authorization: Bearer <token>" \
+  -H "Last-Event-ID: 5" \
+  "http://localhost:8000/v1/optimize/<job_id>/events"
+```
 
 ## Judge vs Target
-
-- **Judge**: fixed at `openai:gpt-5-judge` (configured via settings). The judge model is not overrideable via API.
-- **Target**: selected per request via `OptimizeRequest.target_model_id`. If omitted, the service uses the default target model from settings.
-- **Providers**: Judge uses OpenRouter with OpenAI pass-through; target uses the configured provider for the chosen model.
+**Judge (fixed):** Hard-locked to `openai:gpt-5-judge` via settings; cannot be overridden via API.
+**Target (per-call):** Select with `target_model_id` in the request. If omitted, server uses `TARGET_MODEL_DEFAULT`.
+Providers are chosen per model; the judge runs via OpenRouter with OpenAI pass-through headers.
 
 ## Example Session (copy-paste)
 
