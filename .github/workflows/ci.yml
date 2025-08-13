@@ -119,7 +119,7 @@ jobs:
         run: pip-audit -r requirements.txt
 
       - name: Generate SBOM (CycloneDX)
-        run: cyclonedx-py -e -o sbom.json
+        run: cyclonedx-py requirements -o sbom.json
         working-directory: ${{ env.PROJ_DIR }}
 
       - name: Trivy filesystem scan
