@@ -8,8 +8,8 @@ from fastapi.responses import StreamingResponse, JSONResponse
 
 from ..jobs.registry import JobRegistry, JobStatus
 from ..models import (
-    APIError,
     ErrorCode,
+    ErrorResponse,
     JobState,
     OptimizeRequest,
     OptimizeResponse,
@@ -27,7 +27,7 @@ router = APIRouter()
     response_model=OptimizeResponse,
     summary="Create optimization job",
     description="Create an optimization job. Use optional Idempotency-Key header to dedupe submissions.",
-    responses={401: {"model": APIError}, 429: {"model": APIError}, 413: {"model": APIError}},
+    responses={401: {"model": ErrorResponse}, 429: {"model": ErrorResponse}, 413: {"model": ErrorResponse}},
 )
 async def create_optimize_job(
     request: Request,
@@ -48,7 +48,7 @@ async def create_optimize_job(
 @router.get(
     "/optimize/{job_id}",
     response_model=JobState,
-    responses={404: {"model": APIError}},
+    responses={404: {"model": ErrorResponse}},
 )
 async def get_job(request: Request, job_id: str) -> JobState | JSONResponse:
     registry: JobRegistry = request.app.state.registry
@@ -81,7 +81,7 @@ async def get_job(request: Request, job_id: str) -> JobState | JSONResponse:
 @router.delete(
     "/optimize/{job_id}",
     response_model=JobState,
-    responses={404: {"model": APIError}, 409: {"model": APIError}},
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
 )
 async def cancel_job_endpoint(request: Request, job_id: str):
     registry: JobRegistry = request.app.state.registry
