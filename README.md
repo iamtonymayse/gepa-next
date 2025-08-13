@@ -36,3 +36,46 @@ curl -N "http://127.0.0.1:8000/v1/optimize/<job_id>/events"
 # resume a stream using Last-Event-ID
 curl -N -H "Last-Event-ID: 5" "http://127.0.0.1:8000/v1/optimize/<job_id>/events"
 ```
+
+### Python client
+
+```python
+import asyncio
+from gepa_client import GepaClient
+
+async def main():
+    async with GepaClient("http://localhost:8000", openrouter_key="dev") as client:
+        job_id = await client.create_job("hello world", idempotency_key="demo")
+        async for env in client.stream(job_id):
+            print(env.type)
+            if env.type in {"finished", "failed", "cancelled"}:
+                break
+
+asyncio.run(main())
+```
+
+### TypeScript client
+
+```ts
+import { GepaClient } from 'gepa-client';
+
+const client = new GepaClient('http://localhost:8000', { openrouterKey: 'dev' });
+const jobId = await client.createJob('hello world');
+for await (const env of client.stream(jobId)) {
+  console.log(env.type);
+  if (['finished', 'failed', 'cancelled'].includes(env.type)) break;
+}
+```
+
+## Common errors
+
+| Code | Fix |
+| --- | --- |
+| `unauthorized` | Provide a valid bearer token or set `OPENROUTER_API_KEY` |
+| `not_found` | Verify the job ID |
+| `rate_limited` | Slow down requests or increase quota |
+| `payload_too_large` | Reduce request body size |
+| `not_cancelable` | Job already finished or failed |
+| `sse_backpressure` | Consume events faster |
+| `validation_error` | Check request parameters |
+| `internal_error` | Retry or contact support |

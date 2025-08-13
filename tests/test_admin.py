@@ -19,7 +19,7 @@ def test_admin_endpoints(monkeypatch):
     with client:
         # unauthorized
         assert client.get("/v1/admin/jobs").status_code == 401
-        job_id = client.post("/v1/optimize").json()["job_id"]
+        job_id = client.post("/v1/optimize", json={"prompt": "hi"}).json()["job_id"]
         # wait for finish
         deadline = time.time() + 2
         while time.time() < deadline:

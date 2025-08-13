@@ -5,11 +5,10 @@ import hmac
 import uuid
 
 from fastapi import Request, Response
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ...settings import get_settings
-from ..models import ErrorResponse
+from ..models import ErrorCode, error_response
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -39,12 +38,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         auth_header = request.headers.get("authorization")
         if not auth_header or not auth_header.lower().startswith("bearer "):
-            err = ErrorResponse(code="unauthorized", message="Unauthorized", request_id=request_id)
-            return JSONResponse(err.model_dump(), status_code=401, headers={"X-Request-ID": request_id})
+            return error_response(
+                ErrorCode.unauthorized, "Unauthorized", 401, request_id=request_id
+            )
         token = auth_header.split(" ", 1)[1]
         valid = any(hmac.compare_digest(token, t) for t in settings.API_BEARER_TOKENS)
         if not valid:
-            err = ErrorResponse(code="unauthorized", message="Unauthorized", request_id=request_id)
-            return JSONResponse(err.model_dump(), status_code=401, headers={"X-Request-ID": request_id})
+            return error_response(
+                ErrorCode.unauthorized, "Unauthorized", 401, request_id=request_id
+            )
 
         return await call_next(request)

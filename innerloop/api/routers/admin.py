@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import JSONResponse
 
 from ..jobs.registry import JobRegistry, JobStatus
-from ..models import ErrorResponse
+from ..models import ErrorCode, JobState, error_response
 
 router = APIRouter()
 
@@ -31,15 +30,16 @@ async def get_job(request: Request, job_id: str):
     store = request.app.state.store
     record = await store.get_job(job_id)
     if not record:
-        err = ErrorResponse(code="not_found", message="Job not found", request_id=request.state.request_id)
-        return JSONResponse(err.model_dump(), status_code=404)
-    return {
-        "job_id": record["id"],
-        "status": record["status"],
-        "created_at": record["created_at"],
-        "updated_at": record["updated_at"],
-        "result": record.get("result"),
-    }
+        return error_response(
+            ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id
+        )
+    return JobState(
+        job_id=record["id"],
+        status=record["status"],
+        created_at=record["created_at"],
+        updated_at=record["updated_at"],
+        result=record.get("result"),
+    )
 
 
 @router.delete("/jobs/{job_id}", status_code=204)
@@ -57,10 +57,21 @@ async def cancel_job(request: Request, job_id: str):
     registry: JobRegistry = request.app.state.registry
     job = registry.jobs.get(job_id)
     if not job:
-        err = ErrorResponse(code="not_found", message="Job not found", request_id=request.state.request_id)
-        return JSONResponse(err.model_dump(), status_code=404)
+        return error_response(
+            ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id
+        )
     if job.status != JobStatus.RUNNING:
-        err = ErrorResponse(code="not_cancelable", message="Job not cancelable", request_id=request.state.request_id)
-        return JSONResponse(err.model_dump(), status_code=409)
+        return error_response(
+            ErrorCode.not_cancelable,
+            "Job not cancelable",
+            409,
+            request_id=request.state.request_id,
+        )
     await registry.cancel_job(job_id)
-    return {"job_id": job_id, "status": job.status.value}
+    return JobState(
+        job_id=job_id,
+        status=job.status.value,
+        created_at=job.created_at,
+        updated_at=job.updated_at,
+        result=job.result,
+    )

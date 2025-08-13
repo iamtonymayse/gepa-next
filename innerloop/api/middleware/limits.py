@@ -4,11 +4,10 @@ from typing import Callable
 import uuid
 
 from fastapi import Request, Response
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ...settings import get_settings
-from ..models import ErrorResponse
+from ..models import ErrorCode, error_response
 from ..metrics import inc
 
 
@@ -28,24 +27,20 @@ class SizeLimitMiddleware(BaseHTTPMiddleware):
         if cl is not None:
             try:
                 if int(cl) > limit:
-                    err = ErrorResponse(
-                        code="payload_too_large",
-                        message="Payload too large",
+                    inc("oversize_rejected")
+                    return error_response(
+                        ErrorCode.payload_too_large,
+                        "Payload too large",
+                        413,
                         request_id=request_id,
                     )
-                    inc("oversize_rejected")
-                    return JSONResponse(
-                        err.model_dump(), status_code=413, headers={"X-Request-ID": request_id}
-                    )
             except ValueError:
-                err = ErrorResponse(
-                    code="payload_too_large",
-                    message="Payload too large",
-                    request_id=request_id,
-                )
                 inc("oversize_rejected")
-                return JSONResponse(
-                    err.model_dump(), status_code=413, headers={"X-Request-ID": request_id}
+                return error_response(
+                    ErrorCode.payload_too_large,
+                    "Payload too large",
+                    413,
+                    request_id=request_id,
                 )
             return await call_next(request)
         # No content-length; read stream up to limit
@@ -53,14 +48,12 @@ class SizeLimitMiddleware(BaseHTTPMiddleware):
         async for chunk in request.stream():
             body += chunk
             if len(body) > limit:
-                err = ErrorResponse(
-                    code="payload_too_large",
-                    message="Payload too large",
-                    request_id=request_id,
-                )
                 inc("oversize_rejected")
-                return JSONResponse(
-                    err.model_dump(), status_code=413, headers={"X-Request-ID": request_id}
+                return error_response(
+                    ErrorCode.payload_too_large,
+                    "Payload too large",
+                    413,
+                    request_id=request_id,
                 )
         async def receive() -> dict:
             return {"type": "http.request", "body": body, "more_body": False}

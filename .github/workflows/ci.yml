@@ -46,6 +46,26 @@ jobs:
             "ruff>=0.5.0" "mypy>=1.10" \
             "bandit>=1.7" "radon>=6.0"
 
+      - name: Install Python client
+        run: pip install -e clients/python
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: clients/js/package-lock.json
+
+      - name: Build JS client
+        run: |
+          cd clients/js
+          npm ci
+          npm test
+          npm run build
+          cd ../..
+      - name: Type check JS
+        working-directory: clients/js
+        run: npx tsc --noEmit
+
       - name: Lint
         run: ruff check "$PROJ_DIR"
 
@@ -76,3 +96,11 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/${{ env.PROJ_DIR }}
         working-directory: ${{ env.PROJ_DIR }}
+
+      - name: Upload examples
+        uses: actions/upload-artifact@v4
+        with:
+          name: examples
+          path: |
+            examples/
+            docs/postman/

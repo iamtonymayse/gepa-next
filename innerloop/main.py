@@ -3,7 +3,9 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager, suppress
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .settings import get_settings
@@ -17,6 +19,7 @@ from .api.routers.optimize import router as optimize_router
 from .api.routers.admin import router as admin_router
 from .api.jobs.registry import JobRegistry
 from .api.jobs.store import JobStore, MemoryJobStore, SQLiteJobStore
+from .api.models import ErrorCode, error_response
 
 
 @asynccontextmanager
@@ -68,6 +71,27 @@ def create_app() -> FastAPI:
     # Backward-compatible unversioned aliases (hidden from schema)
     app.include_router(health_router, include_in_schema=False)
     app.include_router(optimize_router, include_in_schema=False)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:  # pragma: no cover - simple
+        return error_response(
+            ErrorCode.validation_error,
+            "Invalid request",
+            422,
+            request_id=getattr(request.state, "request_id", None),
+            details={"errors": exc.errors()},
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_handler(request: Request, exc: Exception) -> JSONResponse:  # pragma: no cover - simple
+        return error_response(
+            ErrorCode.internal_error,
+            "Internal server error",
+            500,
+            request_id=getattr(request.state, "request_id", None),
+        )
 
     return app
 
