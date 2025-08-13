@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 @pytest.mark.timeout(5)
 def test_judge_stub_and_target(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
+    monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     monkeypatch.setenv("USE_MODEL_STUB", "true")
     monkeypatch.setenv("JUDGE_MODEL_ID", "openai:gpt-5-judge")
     import innerloop.settings as settings
@@ -28,7 +29,9 @@ def test_judge_stub_and_target(monkeypatch):
         resp = client.post("/v1/optimize", json=body, params={"iterations": 2})
         assert resp.status_code == 200
         job_id = resp.json()["job_id"]
-        with client.stream("GET", f"/v1/optimize/{job_id}/events") as stream:
+        with client.stream(
+            "GET", f"/v1/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+        ) as stream:
             line_iter = stream.iter_lines()
             first = next(line_iter)
             assert first.startswith("retry:")
@@ -48,7 +51,9 @@ def test_judge_stub_and_target(monkeypatch):
             proposal1 = finished["data"]["proposal"]
         resp2 = client.post("/v1/optimize", json=body, params={"iterations": 2})
         job2 = resp2.json()["job_id"]
-        with client.stream("GET", f"/v1/optimize/{job2}/events") as stream:
+        with client.stream(
+            "GET", f"/v1/optimize/{job2}/events", headers={"Authorization": "Bearer token"}
+        ) as stream:
             for line in stream.iter_lines():
                 if line.startswith("data:"):
                     env = json.loads(line[5:])

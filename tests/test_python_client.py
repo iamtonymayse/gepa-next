@@ -1,7 +1,9 @@
 import importlib
 import sys
+import importlib
 import pathlib
 import asyncio
+import sys
 
 import httpx
 import pytest
@@ -20,13 +22,14 @@ def anyio_backend():
 @pytest.fixture
 async def gepa_client(monkeypatch) -> GepaClient:
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
+    monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     import innerloop.settings as settings
     importlib.reload(settings)
     import innerloop.main as main
     importlib.reload(main)
     async with main.app.router.lifespan_context(main.app):
         transport = httpx.ASGITransport(app=main.app)
-        client = GepaClient("http://test", openrouter_key="dev")
+        client = GepaClient("http://test", openrouter_key="dev", bearer_token="token")
         client._client = httpx.AsyncClient(transport=transport, base_url="http://test")
         try:
             yield client

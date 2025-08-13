@@ -23,7 +23,9 @@ def test_admin_endpoints(monkeypatch):
         # wait for finish
         deadline = time.time() + 2
         while time.time() < deadline:
-            state = client.get(f"/v1/optimize/{job_id}").json()
+            state = client.get(
+                f"/v1/optimize/{job_id}", headers={"Authorization": "Bearer token"}
+            ).json()
             if state["status"] == "finished":
                 break
             time.sleep(0.05)
@@ -35,5 +37,8 @@ def test_admin_endpoints(monkeypatch):
             f"/v1/admin/jobs/{job_id}", headers={"Authorization": "Bearer token"}
         )
         assert del_resp.status_code == 204
-        state_resp = client.get(f"/v1/optimize/{job_id}")
+        state_resp = client.get(
+            f"/v1/optimize/{job_id}", headers={"Authorization": "Bearer token"}
+        )
         assert state_resp.status_code == 404
+

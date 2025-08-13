@@ -30,38 +30,58 @@ def test_401_no_bypass(monkeypatch):
 
 
 def test_events_404(monkeypatch):
-    client = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
+    client = create_client(
+        monkeypatch, OPENROUTER_API_KEY="dev", API_BEARER_TOKENS='["token"]'
+    )
     with client:
-        resp = client.get("/optimize/does-not-exist/events")
+        resp = client.get(
+            "/optimize/does-not-exist/events", headers={"Authorization": "Bearer token"}
+        )
         assert resp.status_code == 404
         assert resp.json()["error"]["code"] == "not_found"
 
 
 def test_state_endpoint(monkeypatch):
-    client = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
+    client = create_client(
+        monkeypatch, OPENROUTER_API_KEY="dev", API_BEARER_TOKENS='["token"]'
+    )
     with client:
         job_id = client.post("/optimize", json={"prompt": "hi"}).json()["job_id"]
-        state = client.get(f"/optimize/{job_id}").json()
+        state = client.get(
+            f"/optimize/{job_id}", headers={"Authorization": "Bearer token"}
+        ).json()
         assert state["status"] in {"running", "finished"}
 
 
 def test_cancel_flow(monkeypatch):
-    client = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
+    client = create_client(
+        monkeypatch, OPENROUTER_API_KEY="dev", API_BEARER_TOKENS='["token"]'
+    )
     with client:
-        job_id = client.post("/optimize", json={"prompt": "hi"}, params={"iterations": 2}).json()["job_id"]
-        client.delete(f"/optimize/{job_id}")
+        job_id = client.post(
+            "/optimize", json={"prompt": "hi"}, params={"iterations": 2}
+        ).json()["job_id"]
+        client.delete(
+            f"/optimize/{job_id}", headers={"Authorization": "Bearer token"}
+        )
         deadline = time.time() + 1
         while time.time() < deadline:
-            state = client.get(f"/optimize/{job_id}").json()
+            state = client.get(
+                f"/optimize/{job_id}", headers={"Authorization": "Bearer token"}
+            ).json()
             if state["status"] == "cancelled":
                 break
             time.sleep(0.05)
         else:
             pytest.fail("not cancelled")
-        with client.stream("GET", f"/optimize/{job_id}/events") as stream:
+        with client.stream(
+            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+        ) as stream:
             events = [line for line in stream.iter_lines() if line.startswith("event:")]
         assert any(e == "event: cancelled" for e in events)
-        resp = client.delete(f"/optimize/{job_id}")
+        resp = client.delete(
+            f"/optimize/{job_id}", headers={"Authorization": "Bearer token"}
+        )
         assert resp.status_code == 409
         assert resp.json()["error"]["code"] == "not_cancelable"
 
@@ -92,10 +112,14 @@ def test_size_limit(monkeypatch):
 
 
 def test_sse_schema(monkeypatch):
-    client = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
+    client = create_client(
+        monkeypatch, OPENROUTER_API_KEY="dev", API_BEARER_TOKENS='["token"]'
+    )
     with client:
         job_id = client.post("/optimize", json={"prompt": "hi"}).json()["job_id"]
-        with client.stream("GET", f"/optimize/{job_id}/events") as stream:
+        with client.stream(
+            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+        ) as stream:
             it = stream.iter_lines()
             prelude = next(it)
             assert prelude.startswith("retry:")

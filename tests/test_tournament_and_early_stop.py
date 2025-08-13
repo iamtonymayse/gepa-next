@@ -16,7 +16,12 @@ def reload_env(monkeypatch, **env):
 
 
 def test_early_stop_and_events(monkeypatch):
-    main = reload_env(monkeypatch, OPENROUTER_API_KEY="dev", USE_MODEL_STUB="true")
+    main = reload_env(
+        monkeypatch,
+        OPENROUTER_API_KEY="dev",
+        USE_MODEL_STUB="true",
+        API_BEARER_TOKENS='["token"]',
+    )
     with TestClient(main.app) as client:
         r = client.post(
             "/v1/optimize",
@@ -31,7 +36,9 @@ def test_early_stop_and_events(monkeypatch):
         )
         job = r.json()["job_id"]
         saw = set()
-        with client.stream("GET", f"/v1/optimize/{job}/events") as s:
+        with client.stream(
+            "GET", f"/v1/optimize/{job}/events", headers={"Authorization": "Bearer token"}
+        ) as s:
             for ln in s.iter_lines():
                 if ln.startswith("event:"):
                     saw.add(ln.split(":", 1)[1].strip())
