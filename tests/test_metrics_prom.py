@@ -2,7 +2,7 @@ import importlib
 from fastapi.testclient import TestClient
 
 
-def test_prometheus_metrics_expose_http_and_sse(monkeypatch):
+def test_metrics_snapshot(monkeypatch):
     monkeypatch.delenv("API_BEARER_TOKENS", raising=False)
     import innerloop.settings as settings
     importlib.reload(settings)
@@ -11,10 +11,8 @@ def test_prometheus_metrics_expose_http_and_sse(monkeypatch):
     with TestClient(main.app) as client:
         r = client.get("/v1/healthz")
         assert r.status_code == 200
-        m = client.get("/v1/metrics")
+        m = client.get("/v1/metricsz")
         assert m.status_code == 200
-        text = m.text
-        assert "http_requests_total" in text
-        assert 'path="/v1/healthz"' in text
-        assert "sse_clients" in text
-
+        data = m.json()
+        assert "jobs_created" in data
+        assert "histograms" in data

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -16,7 +17,7 @@ from ...domain.retrieval import retrieve
 from ...domain.eval_runner import run_eval
 from ...settings import get_settings
 from ..sse import SSE_TERMINALS
-from ..metrics import inc
+from ..metrics import inc, observe
 from .store import JobStore
 
 
@@ -108,10 +109,13 @@ class JobRegistry:
             "id": job.next_event_id,
         }
         job.next_event_id += 1
+        start_put = time.perf_counter()
         try:
             await asyncio.wait_for(
                 job.queue.put(envelope), timeout=settings.SSE_BACKPRESSURE_FAIL_TIMEOUT_S
             )
+            put_ms = (time.perf_counter() - start_put) * 1000.0
+            observe("sse_put_ms", put_ms)
         except asyncio.TimeoutError:
             job.status = JobStatus.FAILED
             job.result = {"error": "sse_backpressure"}
@@ -153,6 +157,7 @@ class JobRegistry:
                     await self._emit(job, ev, data)
 
                 await _emit_ev("started", {})
+                job_start = time.perf_counter()
                 await run_eval(
                     self.store,
                     base_prompt=payload.get("name") or payload.get("prompt", ""),
@@ -169,11 +174,14 @@ class JobRegistry:
                 )
                 job.result = job.result or {}
                 job.status = JobStatus.FINISHED
+                total_ms = (time.perf_counter() - job_start) * 1000.0
+                observe("job_total_ms", total_ms)
                 await self._emit(job, "finished", job.result or {})
                 return
 
             job.status = JobStatus.RUNNING
             await self._emit(job, "started", {})
+            job_start = time.perf_counter()
             if job.status == JobStatus.FAILED:
                 return
             mode = payload.get("mode", "default")
@@ -181,6 +189,8 @@ class JobRegistry:
                 result = await gepa_loop(job, self._emit, payload)
                 job.result = result
                 job.status = JobStatus.FINISHED
+                total_ms = (time.perf_counter() - job_start) * 1000.0
+                observe("job_total_ms", total_ms)
                 await self._emit(job, "finished", result)
                 return
             iterations = min(iterations, settings.MAX_ITERATIONS)
@@ -224,6 +234,7 @@ class JobRegistry:
             prev_pool: List[str] = []
 
             for i in range(iterations):
+                iter_start = time.perf_counter()
                 if loop.time() > deadline:
                     job.status = JobStatus.FAILED
                     job.result = {"error": "deadline_exceeded"}
@@ -260,6 +271,10 @@ class JobRegistry:
                     "scores": {**det_scores, "judge": judge["scores"]},
                 }
                 await self._emit(job, "progress", progress)
+                iter_ms = (time.perf_counter() - iter_start) * 1000.0
+                observe("iteration_ms", iter_ms)
+                if job.status == JobStatus.FAILED:
+                    return
                 await self._emit(job, "selected", {"candidate": chosen, "scores": progress["scores"]})
                 total = sum(det_scores.values()) + sum(judge["scores"].values())
                 if total > best_score:
@@ -295,6 +310,8 @@ class JobRegistry:
                 "rubric": rubric,
             }
             job.status = JobStatus.FINISHED
+            total_ms = (time.perf_counter() - job_start) * 1000.0
+            observe("job_total_ms", total_ms)
             await self._emit(job, "finished", job.result)
         except asyncio.CancelledError:
             if not job.terminal_emitted:

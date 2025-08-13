@@ -8,7 +8,6 @@ from typing import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from ..metrics import record_http_request
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -55,18 +54,3 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             self.logger.info("request", extra=extra)
             if response:
                 response.headers["X-Request-ID"] = request_id
-
-            # metrics (prometheus-style counters & histogram)
-            try:
-                route = request.scope.get("route")
-                path_template = getattr(route, "path", request.url.path)
-                status = response.status_code if response else 500
-                record_http_request(
-                    method=request.method,
-                    path=path_template,
-                    status=status,
-                    duration_s=duration_ms / 1000.0,
-                )
-            except Exception:
-                # never let metrics break requests
-                self.logger.exception("metrics_record_failed")
