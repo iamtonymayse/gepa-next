@@ -36,3 +36,8 @@ async def metricsz(settings: Settings = Depends(get_settings)) -> dict:
 async def metrics(settings: Settings = Depends(get_settings)) -> PlainTextResponse:
     """Prometheus-style text exposition format."""
     return PlainTextResponse(snapshot_metrics_text())
+
+
+@router.get("/version")
+async def version(settings: Settings = Depends(get_settings)) -> dict[str, str]:
+    return {"version": getattr(settings, "VERSION", "0.1.0")}

@@ -1,5 +1,4 @@
 # GEPA-NEXT
-
 Production-ready GEPA-style evolutionary prompt optimization service with SSE streaming, idempotent jobs, bounded buffers/backpressure, and a fixed GPT-5 judge.
 
 ## Docs
@@ -71,7 +70,17 @@ curl -s http://localhost:8000/v1/metrics | head -n 20
 ```
 
 ## Highlights
-- GPT-5 judge locked; target selectable per request.
+A GEPA-style evolutionary prompt optimization engine with GPT-5 judge.
+
+## Docs
+- **Quickstart:** `docs/QUICKSTART.md`
+- **API Reference:** `docs/API.md`
+- **SSE Guide:** `docs/SSE.md`
+- **Auth (Bearer):** `docs/AUTH.md`
+- **Environment (.env):** `docs/ENV.md`
+
+## Highlights
+- GPT-5 **judge** locked; **target** selectable per request.
 - Idempotent job creation; SSE streaming with resume; bounded buffers/backpressure.
 - Health/metrics/version endpoints for ops.
 
