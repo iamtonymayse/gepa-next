@@ -69,6 +69,7 @@ class GepaClient:
         examples: List[Dict[str, Any]] | None = None,
         objectives: List[str] | None = None,
         seed: int | None = None,
+        target_model_id: str | None = None,
         model_id: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
@@ -86,7 +87,9 @@ class GepaClient:
             payload["objectives"] = objectives
         if seed is not None:
             payload["seed"] = seed
-        if model_id is not None:
+        if target_model_id is not None:
+            payload["target_model_id"] = target_model_id
+        elif model_id is not None:
             payload["model_id"] = model_id
         if temperature is not None:
             payload["temperature"] = temperature

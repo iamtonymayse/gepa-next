@@ -21,7 +21,7 @@ from .api.routers.examples import router as examples_router
 from .api.jobs.registry import JobRegistry
 from .api.jobs.store import JobStore, MemoryJobStore, SQLiteJobStore
 from .api.models import ErrorCode, error_response
-from .domain.engine import close_provider
+from .domain.engine import close_all_providers
 from .domain.examples_store import ExampleStore
 
 
@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
             await reaper_task
         # Close any cached external provider clients (if used)
         with suppress(Exception):
-            await close_provider()
+            await close_all_providers()
 
 
 def create_app() -> FastAPI:

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     REQUIRE_AUTH: bool = True
     API_BEARER_TOKENS: List[str] = Field(default_factory=list)
     OPENROUTER_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
     CORS_ALLOWED_ORIGINS: List[str] = Field(default_factory=list)
     SSE_RETRY_MS: int = 1500
     SSE_QUEUE_MAXSIZE: int = 100
@@ -35,6 +36,10 @@ class Settings(BaseSettings):
     IDEMPOTENCY_TTL_S: float = 600.0
     USE_MODEL_STUB: bool = True
     MODEL_ID: str = "gpt-4o-mini"
+    TARGET_DEFAULT_MODEL_ID: str = "gpt-4o-mini"
+    JUDGE_PROVIDER: Literal["openrouter", "openai"] = "openrouter"
+    JUDGE_MODEL_ID: str = "gpt-5"
+    JUDGE_TIMEOUT_S: float = 10.0
     MAX_WALL_TIME_S: float = 15.0
     JOB_STORE: Literal["memory", "sqlite"] = "memory"
     SQLITE_PATH: str = "gepa.db"

@@ -126,6 +126,39 @@ Optional knobs per request:
 }
 ```
 
+Judge vs Target model
+- **Judge**: fixed by server (`JUDGE_MODEL_ID`, default GPT-5). Clients cannot choose it.
+- **BYO OpenAI key**: set `OPENAI_API_KEY` on the server to pass through as `X-OpenAI-Api-Key` to OpenRouter.
+- **Target model**: choose per request with `target_model_id`; if omitted, server uses `TARGET_DEFAULT_MODEL_ID`.
+
+Full request with examples and objectives:
+```json
+{
+  "prompt": "summarize",
+  "examples": [
+    {"input": "long text", "expected": "short"},
+    {"input": "another"}
+  ],
+  "objectives": ["brevity", "diversity", "coverage"],
+  "target_model_id": "gpt-4o-mini"
+}
+```
+
+Sample progress event (SSE):
+```
+data: {
+  "type": "progress",
+  "data": {
+    "proposal": "...",
+    "scores": {
+      "brevity": -5.0,
+      "diversity": 0.2,
+      "judge": {"brevity": 7, "diversity": 6, "coverage": 5}
+    }
+  }
+}
+```
+
 Scores in SSE payloads
 Progress and terminal events may include objective scores:
 

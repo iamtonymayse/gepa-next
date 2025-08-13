@@ -11,6 +11,7 @@ from ...domain.objectives import get_objectives
 from ...domain.reflection_multirole import update_lessons_journal
 from ...domain.reflection_runner import run_reflection
 from ...domain.gepa_loop import gepa_loop
+from ...domain.judge import judge_scores
 from ...settings import get_settings
 from ..sse import SSE_TERMINALS
 from ..metrics import inc
@@ -157,11 +158,16 @@ class JobRegistry:
                 await self._emit(job, "finished", result)
                 return
             iterations = min(iterations, settings.MAX_ITERATIONS)
+            prompt = payload.get("prompt", "")
+            examples = payload.get("examples") or []
+            objective_names: List[str] = payload.get("objectives") or ["brevity", "diversity", "coverage"]
+            target_model_id = payload.get("target_model_id") or payload.get("model_id")
+            temperature = payload.get("temperature")
+            max_tokens = payload.get("max_tokens")
+            objectives = get_objectives(objective_names, examples)
             lessons: List[str] = []
             proposals: List[str] = []
-            examples = payload.get("examples") or []
-            objective_names: List[str] = payload.get("objectives") or []
-            objectives = get_objectives(objective_names, examples)
+            judge_results: List[Dict[str, Any]] = []
             loop = asyncio.get_event_loop()
             start = loop.time()
             deadline = start + settings.MAX_WALL_TIME_S
@@ -178,15 +184,13 @@ class JobRegistry:
                     await self._emit(job, "failed", job.result)
                     return
                 result = await run_reflection(
-                    prompt=payload["prompt"],
+                    prompt=prompt,
                     mode="default",
                     iteration=i,
                     examples=examples,
-                    model_params={
-                        "temperature": payload.get("temperature"),
-                        "max_tokens": payload.get("max_tokens"),
-                        "model_id": payload.get("model_id"),
-                    },
+                    target_model_id=target_model_id,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
                 )
                 if loop.time() > deadline:
                     job.status = JobStatus.FAILED
@@ -194,16 +198,18 @@ class JobRegistry:
                     await self._emit(job, "failed", job.result)
                     return
                 lessons = update_lessons_journal(lessons, result.get("lessons", []))
-                proposals.append(result.get("proposal", ""))
-                best_list = rank_candidates(proposals, objectives if objectives else None, n=1)
-                best = best_list[0] if best_list else ""
+                proposal_text = result.get("proposal", "")
+                proposals.append(proposal_text)
+                det_scores = scores_for(proposal_text) if objective_names else {}
+                judge = await judge_scores(prompt, proposal_text, examples, objective_names)
+                judge_results.append(judge["scores"])
                 progress_data = {
                     "iteration": i + 1,
                     "summary": result.get("summary"),
-                    "proposal": best,
+                    "proposal": proposal_text,
                 }
                 if objective_names:
-                    progress_data["scores"] = scores_for(best)
+                    progress_data["scores"] = {**det_scores, "judge": judge["scores"]}
                 if examples:
                     progress_data["example_ids"] = [e["id"] for e in examples]
                 await self._emit(job, "progress", progress_data)
@@ -213,11 +219,26 @@ class JobRegistry:
                     await self._emit(job, "failed", job.result)
                     return
                 await asyncio.sleep(0.05)
-            best_list = rank_candidates(proposals, objectives if objectives else None, n=1)
-            best = best_list[0] if best_list else ""
-            result_scores = scores_for(best) if objective_names else {}
+            avg_scores = [
+                sum(j.get(obj, 0.0) for obj in objective_names) / len(objective_names)
+                for j in judge_results
+            ]
+            max_avg = max(avg_scores) if avg_scores else 0.0
+            candidates = [i for i, s in enumerate(avg_scores) if s == max_avg]
+            if len(candidates) > 1:
+                tied_texts = [proposals[i] for i in candidates]
+                best_text = rank_candidates(
+                    tied_texts, objectives if objectives else None, n=1
+                )[0]
+                best_index = proposals.index(best_text)
+            else:
+                best_index = candidates[0] if candidates else 0
+                best_text = proposals[best_index] if proposals else ""
+            det = scores_for(best_text) if objective_names else {}
+            judge_best = judge_results[best_index] if judge_results else {}
+            result_scores = {**det, "judge": judge_best} if objective_names else {"judge": judge_best}
             job.result = {
-                "proposal": best,
+                "proposal": best_text,
                 "lessons": lessons,
                 "scores": result_scores,
             }

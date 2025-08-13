@@ -50,6 +50,7 @@ export class GepaClient {
       examples?: Array<Record<string, any>>;
       objectives?: string[];
       seed?: number;
+      target_model_id?: string;
       model_id?: string;
       temperature?: number;
       max_tokens?: number;
@@ -65,7 +66,8 @@ export class GepaClient {
     if (opts.examples) body.examples = opts.examples;
     if (opts.objectives) body.objectives = opts.objectives;
     if (opts.seed !== undefined) body.seed = opts.seed;
-    if (opts.model_id) body.model_id = opts.model_id;
+    if (opts.target_model_id) body.target_model_id = opts.target_model_id;
+    else if (opts.model_id) body.model_id = opts.model_id;
     if (opts.temperature !== undefined) body.temperature = opts.temperature;
     if (opts.max_tokens !== undefined) body.max_tokens = opts.max_tokens;
     const resp = await fetch(`${this.baseUrl}/v1/optimize${params}`, {
