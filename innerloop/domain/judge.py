@@ -5,10 +5,14 @@ import json
 import time
 from typing import Any, Dict, List, Iterable, Tuple
 
+import logging
+
 from .engine import get_judge_provider, get_provider_from_env
 from ..settings import get_settings, Settings
 from .judge_prompts import PAIRWISE_TEMPLATE
 from ..api.metrics import inc
+
+log = logging.getLogger(__name__)
 
 
 def _build_judge_prompt(
@@ -214,8 +218,8 @@ def get_judge(settings: Settings | None = None):
         # Visible in metrics so ops can spot accidental stub usage in prod.
         try:
             inc("judge_stub_used", 1)
-        except Exception:
-            pass
+        except Exception as exc:  # pragma: no cover
+            log.debug("judge_stub_used metric increment failed: %s", exc)
         return JudgeStub()
 
     # Real judge path: use provider-backed adapter
