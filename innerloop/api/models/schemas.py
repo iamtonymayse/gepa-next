@@ -57,6 +57,9 @@ class OptimizeRequest(BaseModel):
     model_id: str | None = None
     temperature: float | None = None
     max_tokens: int | None = None
+    tournament_size: int | None = None
+    recombination_rate: float | None = None
+    early_stop_patience: int | None = None
 
     @field_validator("examples", mode="before")
     @classmethod
@@ -91,6 +94,9 @@ class OptimizeRequest(BaseModel):
                     "examples": [{"input": "long text", "expected": "short"}],
                     "objectives": ["brevity", "diversity", "coverage"],
                     "target_model_id": "gpt-4o-mini",
+                    "tournament_size": 4,
+                    "recombination_rate": 0.5,
+                    "early_stop_patience": 3,
                 }
             ]
         },
@@ -131,6 +137,9 @@ class SSEEnvelope(BaseModel):
     type: Literal[
         "started",
         "progress",
+        "mutation",
+        "selected",
+        "early_stop",
         "finished",
         "failed",
         "cancelled",

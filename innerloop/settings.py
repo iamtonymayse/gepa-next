@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     JUDGE_PROVIDER: Literal["openrouter", "openai"] = "openrouter"
     JUDGE_MODEL_ID: str = "gpt-5"
     JUDGE_TIMEOUT_S: float = 15.0
+    JUDGE_CACHE_SIZE: int = 2048
+    JUDGE_QPS_MAX: float = 5.0
+    TOURNAMENT_SIZE: int = 4
+    RECOMBINATION_RATE: float = 0.5
+    EARLY_STOP_PATIENCE: int = 3
+    RETRIEVAL_MAX_EXAMPLES: int = 4
+    RETRIEVAL_MIN_LEN: int = 8
     TARGET_MODEL_DEFAULT: str = "openrouter/gpt-4o-mini"
     MAX_CANDIDATES: int = 8
     MAX_EXAMPLES_PER_JOB: int = 16
@@ -76,6 +83,11 @@ def get_settings() -> Settings:
         settings.RATE_LIMIT_PER_MIN = int(settings.RATE_LIMIT_OPTIMIZE_RPS * 60)
     if settings.RATE_LIMIT_OPTIMIZE_BURST is not None:
         settings.RATE_LIMIT_BURST = settings.RATE_LIMIT_OPTIMIZE_BURST
+    settings.TOURNAMENT_SIZE = max(2, int(settings.TOURNAMENT_SIZE))
+    settings.RECOMBINATION_RATE = min(1.0, max(0.0, settings.RECOMBINATION_RATE))
+    settings.EARLY_STOP_PATIENCE = max(1, int(settings.EARLY_STOP_PATIENCE))
+    settings.RETRIEVAL_MAX_EXAMPLES = max(0, int(settings.RETRIEVAL_MAX_EXAMPLES))
+    settings.RETRIEVAL_MIN_LEN = max(0, int(settings.RETRIEVAL_MIN_LEN))
     return settings
 
 

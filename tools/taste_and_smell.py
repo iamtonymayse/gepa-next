@@ -267,7 +267,9 @@ def scan_smells(proj: Path) -> List[Finding]:
             continue
         txt = path.read_text()
         rel = str(path.relative_to(proj))
-        is_endpoint = "/api/routers/" in rel.replace("\\", "/")
+        rel_norm = rel.replace("\\", "/")
+        is_endpoint = "/api/routers/" in rel_norm
+        is_domain = "/domain/" in rel_norm and not rel_norm.endswith("engine.py")
         for pat, sev, tag, msg in [
             (r"time\.sleep\(", "MED", "PERF", "time.sleep in async context"),
             (
@@ -276,12 +278,16 @@ def scan_smells(proj: Path) -> List[Finding]:
                 "PERF",
                 "blocking subprocess.run",
             ),
-            (r"requests\.", "MED", "PERF", "requests usage in endpoint"),
+            (r"requests\.", "MED", "PERF", "requests usage"),
             (r"print\(", "LOW", "STYLE", "print statement"),
             (r"from .* import \*", "LOW", "STYLE", "star import"),
         ]:
-            if pat == r"requests\." and not is_endpoint:
+            if pat == r"requests\." and not (is_endpoint or is_domain):
                 continue
+            if pat == r"requests\." and is_domain:
+                msg = "requests usage in domain"
+            if pat == r"requests\." and is_endpoint:
+                msg = "requests usage in endpoint"
             for m in re.finditer(pat, txt):
                 line = txt[: m.start()].count("\n") + 1
                 snippet = txt.splitlines()[line - 1].strip()
@@ -344,6 +350,21 @@ def fastapi_checks(proj: Path) -> Tuple[Dict[str, str], List[Finding]]:
     status, f = check_auth(auth_py)
     checks["auth"] = status
     findings.extend(f)
+    usage_md = proj / "USAGE.md"
+    if usage_md.exists():
+        txt = usage_md.read_text()
+        for evt in ["mutation", "selected", "early_stop"]:
+            if evt not in txt:
+                findings.append(
+                    Finding(
+                        "LOW",
+                        "API",
+                        str(usage_md.relative_to(proj)),
+                        0,
+                        f"Missing event {evt} documentation",
+                        "",
+                    )
+                )
     return checks, findings
 
 

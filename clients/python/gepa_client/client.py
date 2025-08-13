@@ -19,7 +19,17 @@ class JobState(BaseModel):
 
 
 class SSEEnvelope(BaseModel):
-    type: Literal["started", "progress", "finished", "failed", "cancelled", "shutdown"]
+    type: Literal[
+        "started",
+        "progress",
+        "mutation",
+        "selected",
+        "early_stop",
+        "finished",
+        "failed",
+        "cancelled",
+        "shutdown",
+    ]
     schema_version: int = 1
     job_id: str
     ts: float
