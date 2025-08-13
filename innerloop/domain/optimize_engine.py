@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Callable, List, Sequence, TypeVar
 
+from .judge import judge_pair
+from .recombination import recombine
+
 T = TypeVar("T")
 
 
@@ -45,9 +48,41 @@ def pareto_filter(
     return [item for item, _ in front[:n]]
 
 
-def rank_candidates(
+async def tournament_rank(cands: List[str], task: str, k: int) -> List[str]:
+    if k < 2 or len(cands) < 2:
+        return list(cands)
+    pool = list(cands)
+    while len(pool) > 1:
+        next_round: List[str] = []
+        for i in range(0, len(pool), k):
+            group = pool[i : i + k]
+            champ = group[0]
+            for challenger in group[1:]:
+                res = await judge_pair(champ, challenger, task)
+                champ = res.get("winner", champ)
+            next_round.append(champ)
+        pool = next_round
+    champion = pool[0]
+    rest = [c for c in cands if c != champion]
+    return [champion] + rest
+
+
+async def rank_candidates(
     items: List[str],
     objectives: List[Callable[[str], float]] | None,
+    task: str,
+    tournament_size: int,
     n: int = 1,
 ) -> List[str]:
-    return pareto_filter(items, n=n, objectives=objectives)
+    front = pareto_filter(items, n=n, objectives=objectives)
+    top = front[: min(len(front), max(1, tournament_size * 2))]
+    if len(top) > 1:
+        try:
+            ordered = await tournament_rank(top, task, tournament_size)
+            return ordered[:n]
+        except Exception:
+            return top[:n]
+    return top[:n]
+
+
+__all__ = ["pareto_filter", "tournament_rank", "rank_candidates", "recombine"]

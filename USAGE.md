@@ -33,7 +33,7 @@ curl -s -X DELETE "http://localhost:8000/v1/optimize/<job_id>"
 
 What this API is for
 	•	Create a short-lived “optimize” job that iterates on a prompt/idea.
-	•	Stream progress in real time as SSE events: started, progress, and a terminal event (finished, failed, cancelled, or shutdown).
+	•	Stream progress in real time as SSE events: started, mutation, progress, selected, early_stop, and a terminal event (finished, failed, cancelled, or shutdown).
 	•	Resume a stream after a disconnect using Last-Event-ID without losing data.
 	•	Persist jobs (optional sqlite store) so you can replay terminal events after a restart.
 	•	Operate safely: bearer auth by default, idempotency keys, per-request size cap, and basic rate limits.
@@ -122,12 +122,16 @@ Optional knobs per request:
   "seed": 123,
   "model_id": "gpt-4o-mini",
   "temperature": 0.2,
-  "max_tokens": 100
+  "max_tokens": 100,
+  "tournament_size": 4,
+  "recombination_rate": 0.5,
+  "early_stop_patience": 3
 }
 ```
 
 Judge vs Target model
 - **Judge**: fixed by server (`JUDGE_MODEL_ID`, default GPT-5). Clients cannot choose it.
+- **Judge caching & rate limits**: pairwise comparisons use an internal GPT-5 judge with LRU caching and a token-bucket limiter (`JUDGE_QPS_MAX`).
 - **BYO OpenAI key**: set `OPENAI_API_KEY` on the server to pass through as `X-OpenAI-Api-Key` to OpenRouter.
 - **Target model**: choose per request with `target_model_id`; if omitted, server uses `TARGET_DEFAULT_MODEL_ID`.
 
@@ -143,6 +147,8 @@ Full request with examples and objectives:
   "target_model_id": "gpt-4o-mini"
 }
 ```
+
+Additional event types: `mutation` (counts generated mutations), `selected` (top candidate per round), and `early_stop` (loop terminated early but job still finishes).
 
 Sample progress event (SSE):
 ```

@@ -32,6 +32,12 @@ class JobStore(Protocol):
 
     async def get_idempotent(self, key: str, now: float, ttl: float) -> Optional[str]: ...
 
+    async def list_examples(self) -> List[dict]: ...
+
+    async def get_judge_cache(self, task: str, a: str, b: str) -> Optional[Tuple[str, float]]: ...
+
+    async def set_judge_cache(self, task: str, a: str, b: str, winner: str, confidence: float) -> None: ...
+
     async def close(self) -> None: ...
 
 
@@ -41,6 +47,8 @@ class MemoryJobStore:
         self.jobs: Dict[str, dict] = {}
         self.events: Dict[str, deque] = {}
         self.idempotency: Dict[str, Tuple[str, float]] = {}
+        self.examples: List[dict] = []
+        self.judge_cache: Dict[Tuple[str, str, str], Tuple[str, float]] = {}
         self.buffer_size = settings.SSE_BUFFER_SIZE
 
     async def save_job(self, job: Job) -> None:
@@ -81,6 +89,15 @@ class MemoryJobStore:
         if info and now - info[1] < ttl:
             return info[0]
         return None
+
+    async def list_examples(self) -> List[dict]:
+        return list(self.examples)
+
+    async def get_judge_cache(self, task: str, a: str, b: str) -> Optional[Tuple[str, float]]:
+        return self.judge_cache.get((task, a, b))
+
+    async def set_judge_cache(self, task: str, a: str, b: str, winner: str, confidence: float) -> None:
+        self.judge_cache[(task, a, b)] = (winner, confidence)
 
     async def close(self) -> None:
         return None
@@ -125,6 +142,18 @@ class SQLiteJobStore:
                 key TEXT PRIMARY KEY,
                 job_id TEXT,
                 created_at REAL
+            )
+            """
+        )
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS judge_cache (
+                task TEXT,
+                a TEXT,
+                b TEXT,
+                winner TEXT,
+                confidence REAL,
+                PRIMARY KEY(task, a, b)
             )
             """
         )
@@ -227,6 +256,28 @@ class SQLiteJobStore:
         if row and now - row[1] < ttl:
             return row[0]
         return None
+
+    async def list_examples(self) -> List[dict]:
+        return []
+
+    async def get_judge_cache(self, task: str, a: str, b: str) -> Optional[Tuple[str, float]]:
+        async with self.db.execute(
+            "SELECT winner, confidence FROM judge_cache WHERE task=? AND a=? AND b=?",
+            (task, a, b),
+        ) as cur:
+            row = await cur.fetchone()
+        if row:
+            return row[0], float(row[1])
+        return None
+
+    async def set_judge_cache(
+        self, task: str, a: str, b: str, winner: str, confidence: float
+    ) -> None:
+        await self.db.execute(
+            "INSERT OR REPLACE INTO judge_cache(task, a, b, winner, confidence) VALUES(?,?,?,?,?)",
+            (task, a, b, winner, confidence),
+        )
+        await self.db.commit()
 
     async def close(self) -> None:
         await self.db.close()

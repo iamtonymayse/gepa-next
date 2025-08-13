@@ -42,7 +42,9 @@ def test_persistence_across_reload(monkeypatch, tmp_path, store):
                 events = []
                 for line in lines:
                     if line.startswith("event:"):
-                        events.append(line.split(":", 1)[1].strip())
+                        ev = line.split(":", 1)[1].strip()
+                        if ev not in {"mutation", "selected"}:
+                            events.append(ev)
                     if line.startswith("data:") and events and events[-1] == "finished":
                         break
             assert events == ["started", "progress", "finished"]

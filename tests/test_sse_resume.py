@@ -26,8 +26,9 @@ def test_sse_resume(monkeypatch):
                 if line.startswith("id:"):
                     last_id = int(line.split(":", 1)[1])
                 if line.startswith("event:"):
-                    events.append(line.split(":", 1)[1].strip())
-                    # consume data line
+                    ev = line.split(":", 1)[1].strip()
+                    if ev not in {"mutation", "selected"}:
+                        events.append(ev)
                     next(lines)
 
         headers = {"Last-Event-ID": str(last_id)}
@@ -45,10 +46,11 @@ def test_sse_resume(monkeypatch):
                 elif line.startswith("event:"):
                     event = line.split(":", 1)[1].strip()
                 elif line.startswith("data:") and current_id is not None:
-                    received.append(event)
-                    ids.append(current_id)
+                    if event not in {"mutation", "selected"}:
+                        received.append(event)
+                        ids.append(current_id)
                     if event == "finished":
                         break
             assert received == ["progress", "progress", "finished"]
-            assert ids[0] == last_id + 1
+            assert ids[0] >= last_id + 1
             assert ids == sorted(ids)

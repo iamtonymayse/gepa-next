@@ -7,30 +7,16 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from ...domain.objectives import get_objectives
-from ...domain.reflection_multirole import update_lessons_journal
-from ...domain.reflection_runner import run_reflection
 from ...domain.gepa_loop import gepa_loop
 from ...domain.judge import judge_scores
+from ...domain.mutations import mutate_prompt
+from ...domain.recombination import recombine
+from ...domain.optimize_engine import pareto_filter, tournament_rank
+from ...domain.retrieval import retrieve
 from ...settings import get_settings
 from ..sse import SSE_TERMINALS
 from ..metrics import inc
 from .store import JobStore
-
-
-def _select_best(proposals: list[str]) -> str | None:
-    from ...domain.optimize_engine import pareto_filter
-
-    best = pareto_filter(proposals, n=1)
-    return best[0] if best else None
-
-
-def _progress_payload(iteration: int, result: dict, proposals: list[str]) -> dict:
-    chosen = _select_best(proposals)
-    return {
-        "iteration": iteration + 1,
-        "summary": result.get("summary"),
-        "proposal": chosen,
-    }
 
 
 class JobStatus(str, Enum):
@@ -176,20 +162,32 @@ class JobRegistry:
             prompt = payload.get("prompt", "")
             examples = payload.get("examples") or []
             objective_names: List[str] = payload.get("objectives") or ["brevity", "diversity", "coverage"]
-            target_model_id = payload.get("target_model_id") or payload.get("model_id")
-            temperature = payload.get("temperature")
-            max_tokens = payload.get("max_tokens")
+            recombination_rate = (
+                payload.get("recombination_rate") or settings.RECOMBINATION_RATE
+            )
+            tournament_size = (
+                payload.get("tournament_size") or settings.TOURNAMENT_SIZE
+            )
+            early_stop_patience = (
+                payload.get("early_stop_patience") or settings.EARLY_STOP_PATIENCE
+            )
+            task = prompt or (examples[0]["input"] if examples else "")
+            retrieved = await retrieve(task, settings.RETRIEVAL_MAX_EXAMPLES, self.store)
+            examples = (examples + retrieved)[: settings.MAX_EXAMPLES_PER_JOB]
             objectives = get_objectives(objective_names, examples)
-            lessons: List[str] = []
-            proposals: List[str] = []
             loop = asyncio.get_event_loop()
             start = loop.time()
             deadline = start + settings.MAX_WALL_TIME_S
+            seed = payload.get("seed") or settings.DETERMINISTIC_SEED
 
             def scores_for(text: str) -> Dict[str, float]:
-                return {
-                    name: fn(text) for name, fn in zip(objective_names, objectives)
-                }
+                return {name: fn(text) for name, fn in zip(objective_names, objectives)}
+
+            base = prompt
+            best = base
+            best_score = float("-inf")
+            stale = 0
+            prev_pool: List[str] = []
 
             for i in range(iterations):
                 if loop.time() > deadline:
@@ -197,50 +195,53 @@ class JobRegistry:
                     job.result = {"error": "deadline_exceeded"}
                     await self._emit(job, "failed", job.result)
                     return
-                result = await run_reflection(
-                    prompt=prompt,
-                    mode="default",
-                    iteration=i,
-                    examples=examples,
-                    target_model_id=target_model_id,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                )
-                if loop.time() > deadline:
-                    job.status = JobStatus.FAILED
-                    job.result = {"error": "deadline_exceeded"}
-                    await self._emit(job, "failed", job.result)
-                    return
-                lessons = update_lessons_journal(lessons, result.get("lessons", []))
-                proposal_text = result.get("proposal", "")
-                proposals.append(proposal_text)
-                det_scores = scores_for(proposal_text) if objective_names else {}
-                judge = await judge_scores(prompt, proposal_text, examples, objective_names)
-                progress_data = _progress_payload(i, result, proposals)
-                if objective_names:
-                    progress_data["scores"] = {**det_scores, "judge": judge["scores"]}
-                if examples:
-                    progress_data["example_ids"] = [e["id"] for e in examples]
-                await self._emit(job, "progress", progress_data)
+                mutants = mutate_prompt(base, settings.MAX_MUTATIONS_PER_ROUND, seed + i)
+                recombos = recombine(prev_pool, recombination_rate, seed + i)
+                candidates = [base] + mutants + recombos
+                await self._emit(job, "mutation", {"count": len(mutants)})
+                front = pareto_filter(candidates, n=settings.MAX_CANDIDATES, objectives=objectives)
+                m = min(tournament_size * 2, len(front))
+                if m > 1:
+                    ranked = await tournament_rank(front[:m], task, tournament_size)
+                else:
+                    ranked = front
+                chosen = ranked[0] if ranked else base
+                det_scores = scores_for(chosen) if objective_names else {}
+                judge = await judge_scores(task, chosen, examples, objective_names)
+                progress = {
+                    "iteration": i + 1,
+                    "proposal": chosen,
+                    "scores": {**det_scores, "judge": judge["scores"]},
+                }
+                await self._emit(job, "progress", progress)
+                await self._emit(job, "selected", {"candidate": chosen, "scores": progress["scores"]})
+                total = sum(det_scores.values()) + sum(judge["scores"].values())
+                if total > best_score:
+                    best_score = total
+                    best = chosen
+                    stale = 0
+                else:
+                    stale += 1
+                    if stale >= early_stop_patience:
+                        await self._emit(job, "early_stop", {"best": best})
+                        break
+                base = chosen
+                prev_pool = ranked
                 if loop.time() > deadline:
                     job.status = JobStatus.FAILED
                     job.result = {"error": "deadline_exceeded"}
                     await self._emit(job, "failed", job.result)
                     return
                 await asyncio.sleep(0.05)
-            final_best = _select_best(proposals) or ""
-            det = scores_for(final_best) if objective_names else {}
-            judge_final = await judge_scores(prompt, final_best, examples, objective_names)
+
+            det = scores_for(best) if objective_names else {}
+            judge_final = await judge_scores(task, best, examples, objective_names)
             result_scores = (
                 {**det, "judge": judge_final["scores"]}
                 if objective_names
                 else {"judge": judge_final["scores"]}
             )
-            job.result = {
-                "proposal": final_best,
-                "lessons": lessons,
-                "scores": result_scores,
-            }
+            job.result = {"proposal": best, "lessons": [], "scores": result_scores}
             job.status = JobStatus.FINISHED
             await self._emit(job, "finished", job.result)
         except asyncio.CancelledError:
