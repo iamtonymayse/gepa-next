@@ -63,7 +63,8 @@ jobs:
           npm run build
           cd ../..
       - name: Type check JS
-        run: npx tsc -p clients/js/tsconfig.json --noEmit
+        working-directory: clients/js
+        run: npx tsc --noEmit
 
       - name: Lint
         run: ruff check "$PROJ_DIR"
