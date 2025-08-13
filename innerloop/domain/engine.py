@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import httpx
 from contextlib import suppress
-from typing import Optional, Protocol, Dict
+from typing import Dict, Optional, Protocol
+
+import httpx
 
 from ..settings import Settings, get_settings
 

@@ -11,8 +11,8 @@ from .eval import evaluate_batch
 from .examples import load_pack
 from .operators import OPERATORS
 from .optimize_engine import pareto_filter
-from .reflection_runner import run_reflection
 from .reflection_multirole import update_lessons_journal
+from .reflection_runner import run_reflection
 
 
 @dataclass
