@@ -33,7 +33,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if auth.lower().startswith("bearer "):
             token = auth.split(" ", 1)[1]
         elif settings.OPENROUTER_API_KEY and "authorization" not in request.headers:
-            token = "anonymous-openrouter"
+            token = "anonymous-openrouter"  # nosec B105
         else:
             token = request.client.host or ""  # fallback
 

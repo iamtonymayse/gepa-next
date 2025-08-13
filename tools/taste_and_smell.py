@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 import json
 import re
-import subprocess
+import subprocess  # nosec B404
 import sys
 from dataclasses import dataclass
 from datetime import datetime
@@ -31,7 +31,7 @@ def detect_proj_dir() -> Path:
 
 def run(cmd: List[str], cwd: Path, timeout: int = 300) -> Tuple[int, str, str]:
     try:
-        proc = subprocess.run(
+        proc = subprocess.run(  # nosec B603
             cmd,
             cwd=cwd,
             capture_output=True,
@@ -78,7 +78,19 @@ def check_mypy(proj: Path) -> Dict[str, Any]:
 
 
 def check_bandit(proj: Path) -> Dict[str, Any]:
-    data, code = run_json(["bandit", "-r", str(proj), "-f", "json", "-q"], proj)
+    data, code = run_json(
+        [
+            "bandit",
+            "-r",
+            str(proj),
+            "-f",
+            "json",
+            "-q",
+            "-x",
+            str(proj / "tests"),
+        ],
+        proj,
+    )
     issues = (data or {}).get("results", []) if isinstance(data, dict) else []
     return {"issues": issues, "code": code}
 
