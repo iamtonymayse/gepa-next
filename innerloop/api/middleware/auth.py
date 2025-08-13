@@ -22,12 +22,25 @@ class AuthMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
 
         # Public endpoints
-        if path.startswith(("/healthz", "/readyz", "/v1/healthz", "/v1/readyz")):
+        if path.startswith(
+            (
+                "/healthz",
+                "/readyz",
+                "/metricsz",
+                "/metrics",
+                "/v1/healthz",
+                "/v1/readyz",
+                "/v1/metricsz",
+                "/v1/metrics",
+            )
+        ):
             return await call_next(request)
 
-        # Bypass when OPENROUTER_API_KEY set and no Authorization header
+        # Bypass ONLY for POST /optimize (and /v1/optimize) when OPENROUTER_API_KEY set and no Authorization.
+        # GET/DELETE/SSE and all other routes (incl. admin) must require bearer auth.
         if (
-            path.startswith(("/optimize", "/v1/optimize"))
+            request.method == "POST"
+            and path in {"/optimize", "/v1/optimize"}
             and settings.OPENROUTER_API_KEY
             and "authorization" not in request.headers
         ):

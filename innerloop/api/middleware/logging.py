@@ -3,10 +3,12 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+import re
 from typing import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from ..metrics import record_http_request
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -15,6 +17,8 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app) -> None:
         super().__init__(app)
         self.logger = logging.getLogger("gepa")
+        # redact any header key matching these patterns (case-insensitive)
+        self._redact_key_re = re.compile(r"(authorization|api[-_]?key|token)", re.IGNORECASE)
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
@@ -31,12 +35,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             query = request.url.query
             if len(query) > 256:
                 query = query[:256] + "…"
-            headers = {k: v for k, v in request.headers.items()}
-            for key in list(headers.keys()):
-                if key.lower() == "authorization":
-                    headers[key] = "REDACTED"
-            allowed = {"x-request-id", "user-agent", "accept", "accept-encoding"}
-            headers = {k: v for k, v in headers.items() if k.lower() in allowed}
+            headers = {}
+            for k, v in request.headers.items():
+                headers[k] = "REDACTED" if self._redact_key_re.search(k) else v
             extra = {
                 "method": request.method,
                 "path": request.url.path,
@@ -54,3 +55,18 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             self.logger.info("request", extra=extra)
             if response:
                 response.headers["X-Request-ID"] = request_id
+
+            # metrics (prometheus-style counters & histogram)
+            try:
+                route = request.scope.get("route")
+                path_template = getattr(route, "path", request.url.path)
+                status = response.status_code if response else 500
+                record_http_request(
+                    method=request.method,
+                    path=path_template,
+                    status=status,
+                    duration_s=duration_ms / 1000.0,
+                )
+            except Exception:
+                # never let metrics break requests
+                self.logger.exception("metrics_record_failed")

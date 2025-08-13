@@ -33,7 +33,7 @@ Understanding attacker goals (spoofing, tampering, etc.) informs which controls 
 **Checklist**
 - `REQUIRE_AUTH` defaults to true.
 - Validate bearer tokens against `API_BEARER_TOKENS`.
-- Allow bypass when `OPENROUTER_API_KEY` is set and no `Authorization` header is present.
+- Allow bypass ONLY for `POST /v1/optimize` (and `/optimize`) when `OPENROUTER_API_KEY` is set and no `Authorization` header is present. All other routes require auth.
 - Support token rotation by loading tokens on startup only.
 
 **Why it matters**

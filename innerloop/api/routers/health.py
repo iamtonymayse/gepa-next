@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
+from fastapi.responses import PlainTextResponse
 
-from ..metrics import snapshot
+from ..metrics import snapshot, prometheus
 
 router = APIRouter()
 
@@ -20,3 +21,10 @@ async def readyz() -> dict[str, str]:
 @router.get("/metricsz")
 async def metricsz(request: Request) -> dict:
     return snapshot()
+
+
+@router.get("/metrics")
+async def metrics_prom(request: Request) -> PlainTextResponse:
+    """Prometheus text exposition"""
+    text = prometheus()
+    return PlainTextResponse(text, media_type="text/plain; version=0.0.4")

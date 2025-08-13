@@ -55,7 +55,7 @@ Authorization: Bearer <token>
 Tokens are configured via API_BEARER_TOKENS.
 
 	•	Bypass (dev/test convenience): If OPENROUTER_API_KEY is set and the request omits Authorization,
-POST /v1/optimize* is allowed. All other routes still require auth.
+POST /v1/optimize (or /optimize) is allowed. All other routes (including GET /v1/optimize/{id}, SSE /v1/optimize/{id}/events, and DELETE /v1/optimize/{id}) still require auth.
 	•	CORS: Disabled by default unless you set CORS_ALLOWED_ORIGINS.
 
 ⸻
@@ -354,8 +354,10 @@ Jobs and events persist across restarts; replay uses the stored event ring.
 ⸻
 
 Observability
-	•	Logging: one structured line per request (method, path, status, duration ms, request id, client IP, job id when present). Authorization is redacted.
-	•	Metrics (JSON at /metricsz): lightweight counters (e.g., jobs_created, jobs_finished, jobs_failed, jobs_cancelled, sse_connections, rate_limited, oversize_rejected). Suitable for quick dashboards or scraping via sidecar.
+        •       Logging: one structured line per request (method, path, status, duration ms, request id, client IP, job id when present). Authorization is redacted.
+        •       Metrics:
+                - **Prometheus**: `/v1/metrics` with `http_requests_total`, `http_request_duration_seconds` (histogram), `sse_clients` gauge, and job counters (e.g., `jobs_created_total`).
+                - JSON snapshot: `/v1/metricsz` (unchanged).
 
 ⸻
 
