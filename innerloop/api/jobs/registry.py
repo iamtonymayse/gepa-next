@@ -85,6 +85,9 @@ class JobRegistry:
             return False
         if job.task:
             job.task.cancel()
+            return True
+
+        # Fallback if no task exists
         job.status = JobStatus.CANCELLED
         await self._emit(job, "cancelled", {})
         await self.store.save_job(job)
@@ -177,8 +180,9 @@ class JobRegistry:
             job.status = JobStatus.FINISHED
             await self._emit(job, "finished", job.result)
         except asyncio.CancelledError:
-            job.status = JobStatus.CANCELLED
-            await self._emit(job, "cancelled", {})
+            if not job.terminal_emitted:
+                job.status = JobStatus.CANCELLED
+                await self._emit(job, "cancelled", {})
         except Exception as exc:  # pragma: no cover - unexpected
             job.status = JobStatus.FAILED
             await self._emit(job, "failed", {"error": str(exc)})

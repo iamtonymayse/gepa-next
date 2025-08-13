@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+from contextlib import suppress
 from typing import Optional, Protocol
 
 from ..settings import Settings, get_settings
@@ -18,6 +19,7 @@ class LocalEchoProvider:
 
 class OpenRouterProvider:
     def __init__(self, api_key: str) -> None:
+        self.api_key = api_key
         self.client = httpx.AsyncClient(
             timeout=5.0,
             headers={
@@ -40,9 +42,29 @@ class OpenRouterProvider:
         except Exception:
             return "unavailable"
 
+    async def aclose(self) -> None:
+        with suppress(Exception):
+            await self.client.aclose()
+
+
+_provider_singleton: OpenRouterProvider | None = None
+
 
 def get_provider_from_env(settings: Optional[Settings] = None) -> ModelProvider:
     settings = settings or get_settings()
     if not settings.USE_MODEL_STUB and settings.OPENROUTER_API_KEY:
-        return OpenRouterProvider(settings.OPENROUTER_API_KEY)
+        global _provider_singleton
+        if (
+            _provider_singleton is None
+            or _provider_singleton.api_key != settings.OPENROUTER_API_KEY
+        ):
+            _provider_singleton = OpenRouterProvider(settings.OPENROUTER_API_KEY)
+        return _provider_singleton
     return LocalEchoProvider()
+
+
+async def close_provider() -> None:
+    global _provider_singleton
+    if isinstance(_provider_singleton, OpenRouterProvider):
+        await _provider_singleton.aclose()
+    _provider_singleton = None

@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import List, Optional, Literal
 import os
+import json
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
@@ -40,7 +41,15 @@ class Settings(BaseSettings):
     @classmethod
     def split_commas(cls, v: object) -> List[str]:
         if isinstance(v, str):
-            return [item.strip() for item in v.split(",") if item.strip()]
+            s = v.strip()
+            if s.startswith("[") and s.endswith("]"):
+                try:
+                    parsed = json.loads(s)
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    parsed = None
+                if isinstance(parsed, list):
+                    return [str(x).strip() for x in parsed]
+            return [item.strip() for item in s.split(",") if item.strip()]
         if isinstance(v, list):
             return v
         return []
