@@ -73,6 +73,7 @@ class OptimizeRequest(BaseModel):
     tournament_size: int | None = None
     recombination_rate: float | None = None
     early_stop_patience: int | None = None
+    evaluation_rubric: str | None = None
 
     @field_validator("examples", mode="before")
     @classmethod
@@ -104,6 +105,7 @@ class OptimizeRequest(BaseModel):
                     "tournament_size": 4,
                     "recombination_rate": 0.5,
                     "early_stop_patience": 3,
+                    "evaluation_rubric": "clarity, brevity, imagery",
                 }
             ]
         },

@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     JUDGE_TIMEOUT_S: float = 15.0
     JUDGE_CACHE_SIZE: int = 2048
     JUDGE_QPS_MAX: float = 5.0
+    ENABLE_PARETO_V2: bool = True
+    PARETO_TOPN: int = 1
+    EVALUATION_RUBRIC_DEFAULT: str = "overall quality and clarity"
     TOURNAMENT_SIZE: int = 4
     RECOMBINATION_RATE: float = 0.5
     EARLY_STOP_PATIENCE: int = 3
