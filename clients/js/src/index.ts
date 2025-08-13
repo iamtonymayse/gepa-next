@@ -45,7 +45,15 @@ export class GepaClient {
     prompt: string,
     context?: Record<string, any>,
     iterations?: number,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    opts: {
+      examples?: Array<Record<string, any>>;
+      objectives?: string[];
+      seed?: number;
+      model_id?: string;
+      temperature?: number;
+      max_tokens?: number;
+    } = {}
   ): Promise<string> {
     const headers = this.headers(
       idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}
@@ -54,6 +62,12 @@ export class GepaClient {
     const params = iterations ? `?iterations=${iterations}` : '';
     const body: any = { prompt };
     if (context) body.context = context;
+    if (opts.examples) body.examples = opts.examples;
+    if (opts.objectives) body.objectives = opts.objectives;
+    if (opts.seed !== undefined) body.seed = opts.seed;
+    if (opts.model_id) body.model_id = opts.model_id;
+    if (opts.temperature !== undefined) body.temperature = opts.temperature;
+    if (opts.max_tokens !== undefined) body.max_tokens = opts.max_tokens;
     const resp = await fetch(`${this.baseUrl}/v1/optimize${params}`, {
       method: 'POST',
       headers,

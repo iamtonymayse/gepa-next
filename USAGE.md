@@ -100,6 +100,48 @@ Response
 
 { "job_id": "7a2f0a5b-6b91-4ad2-b1c3-44f9f8..." }
 
+Examples & Objectives
+You can supply inline examples and specify scoring objectives:
+
+```
+{
+  "prompt": "summarize",
+  "examples": [
+    {"input": "long text", "expected": "short"},
+    {"input": "another"}
+  ],
+  "objectives": ["brevity", "diversity", "coverage"]
+}
+```
+
+Model parameters
+Optional knobs per request:
+
+```
+{
+  "seed": 123,
+  "model_id": "gpt-4o-mini",
+  "temperature": 0.2,
+  "max_tokens": 100
+}
+```
+
+Scores in SSE payloads
+Progress and terminal events may include objective scores:
+
+```
+data: {
+  "type": "progress",
+  "data": {
+    "proposal": "...",
+    "scores": {"brevity": -10.0, "diversity": 0.5}
+  }
+}
+```
+
+Wall-time deadline
+Each job has a hard limit (MAX_WALL_TIME_S). Exceeding it results in
+`{"error":"deadline_exceeded"}`.
 
 ⸻
 

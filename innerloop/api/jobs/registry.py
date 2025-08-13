@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from ...domain.optimize_engine import pareto_filter
+from ...domain.optimize_engine import rank_candidates
+from ...domain.objectives import get_objectives
 from ...domain.reflection_multirole import update_lessons_journal
 from ...domain.reflection_runner import run_reflection
 from ...domain.gepa_loop import gepa_loop
@@ -158,25 +159,68 @@ class JobRegistry:
             iterations = min(iterations, settings.MAX_ITERATIONS)
             lessons: List[str] = []
             proposals: List[str] = []
+            examples = payload.get("examples") or []
+            objective_names: List[str] = payload.get("objectives") or []
+            objectives = get_objectives(objective_names, examples)
+            loop = asyncio.get_event_loop()
+            start = loop.time()
+            deadline = start + settings.MAX_WALL_TIME_S
+
+            def scores_for(text: str) -> Dict[str, float]:
+                return {
+                    name: fn(text) for name, fn in zip(objective_names, objectives)
+                }
+
             for i in range(iterations):
-                result = await run_reflection(prompt="", mode="default", iteration=i, traces=[])
-                lessons = update_lessons_journal(lessons, result.get("lessons", []))
-                proposals.append(result.get("proposal", ""))
-                best = pareto_filter(proposals, n=1)
-                await self._emit(
-                    job,
-                    "progress",
-                    {
-                        "iteration": i + 1,
-                        "summary": result.get("summary"),
-                        "proposal": best[0] if best else None,
+                if loop.time() > deadline:
+                    job.status = JobStatus.FAILED
+                    job.result = {"error": "deadline_exceeded"}
+                    await self._emit(job, "failed", job.result)
+                    return
+                result = await run_reflection(
+                    prompt=payload["prompt"],
+                    mode="default",
+                    iteration=i,
+                    examples=examples,
+                    model_params={
+                        "temperature": payload.get("temperature"),
+                        "max_tokens": payload.get("max_tokens"),
+                        "model_id": payload.get("model_id"),
                     },
                 )
-                if job.status == JobStatus.FAILED:
+                if loop.time() > deadline:
+                    job.status = JobStatus.FAILED
+                    job.result = {"error": "deadline_exceeded"}
+                    await self._emit(job, "failed", job.result)
+                    return
+                lessons = update_lessons_journal(lessons, result.get("lessons", []))
+                proposals.append(result.get("proposal", ""))
+                best_list = rank_candidates(proposals, objectives if objectives else None, n=1)
+                best = best_list[0] if best_list else ""
+                progress_data = {
+                    "iteration": i + 1,
+                    "summary": result.get("summary"),
+                    "proposal": best,
+                }
+                if objective_names:
+                    progress_data["scores"] = scores_for(best)
+                if examples:
+                    progress_data["example_ids"] = [e["id"] for e in examples]
+                await self._emit(job, "progress", progress_data)
+                if loop.time() > deadline:
+                    job.status = JobStatus.FAILED
+                    job.result = {"error": "deadline_exceeded"}
+                    await self._emit(job, "failed", job.result)
                     return
                 await asyncio.sleep(0.05)
-            best = pareto_filter(proposals, n=1)
-            job.result = {"proposal": best[0] if best else None, "lessons": lessons}
+            best_list = rank_candidates(proposals, objectives if objectives else None, n=1)
+            best = best_list[0] if best_list else ""
+            result_scores = scores_for(best) if objective_names else {}
+            job.result = {
+                "proposal": best,
+                "lessons": lessons,
+                "scores": result_scores,
+            }
             job.status = JobStatus.FINISHED
             await self._emit(job, "finished", job.result)
         except asyncio.CancelledError:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, AsyncIterator, Dict, Literal, Optional
+from typing import Any, AsyncIterator, Dict, Literal, Optional, List
 
 import httpx
 from pydantic import BaseModel
@@ -66,6 +66,12 @@ class GepaClient:
         context: Dict[str, Any] | None = None,
         iterations: int | None = None,
         idempotency_key: str | None = None,
+        examples: List[Dict[str, Any]] | None = None,
+        objectives: List[str] | None = None,
+        seed: int | None = None,
+        model_id: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         headers = self._headers(
             {"Idempotency-Key": idempotency_key} if idempotency_key else None
@@ -74,6 +80,18 @@ class GepaClient:
         payload: Dict[str, Any] = {"prompt": prompt}
         if context is not None:
             payload["context"] = context
+        if examples is not None:
+            payload["examples"] = examples
+        if objectives is not None:
+            payload["objectives"] = objectives
+        if seed is not None:
+            payload["seed"] = seed
+        if model_id is not None:
+            payload["model_id"] = model_id
+        if temperature is not None:
+            payload["temperature"] = temperature
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
         resp = await self._client.post(
             "/v1/optimize", json=payload, params=params, headers=headers
         )

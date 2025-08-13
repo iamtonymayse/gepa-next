@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     SERVICE_ENV: str = "dev"
     IDEMPOTENCY_TTL_S: float = 600.0
     USE_MODEL_STUB: bool = True
+    MODEL_ID: str = "gpt-4o-mini"
+    MAX_WALL_TIME_S: float = 15.0
     JOB_STORE: Literal["memory", "sqlite"] = "memory"
     SQLITE_PATH: str = "gepa.db"
 

@@ -36,14 +36,18 @@ async def gepa_client(monkeypatch) -> GepaClient:
 
 @pytest.mark.anyio
 async def test_idempotent(gepa_client: GepaClient):
-    j1 = await gepa_client.create_job("hi", idempotency_key="same")
-    j2 = await gepa_client.create_job("hi", idempotency_key="same")
+    j1 = await gepa_client.create_job(
+        "hi", idempotency_key="same", examples=[{"input": "x"}]
+    )
+    j2 = await gepa_client.create_job(
+        "hi", idempotency_key="same", examples=[{"input": "x"}]
+    )
     assert j1 == j2
 
 
 @pytest.mark.anyio
 async def test_stream_resume(gepa_client: GepaClient):
-    job = await gepa_client.create_job("hi", iterations=2)
+    job = await gepa_client.create_job("hi", iterations=2, examples=[{"input": "x"}])
     agen = gepa_client.stream(job)
     first = await agen.__anext__()
     assert isinstance(first, SSEEnvelope)
@@ -54,7 +58,7 @@ async def test_stream_resume(gepa_client: GepaClient):
 
 @pytest.mark.anyio
 async def test_cancel(gepa_client: GepaClient):
-    job = await gepa_client.create_job("hi", iterations=2)
+    job = await gepa_client.create_job("hi", iterations=2, examples=[{"input": "x"}])
     cancel_task = asyncio.create_task(gepa_client.cancel(job))
     events = []
     async for env in gepa_client.stream(job):

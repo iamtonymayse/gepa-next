@@ -6,7 +6,9 @@ describe('GepaClient', () => {
     const fetchMock = vi.fn().mockResolvedValue({ json: async () => ({ job_id: '1' }) });
     (globalThis as any).fetch = fetchMock;
     const client = new GepaClient('http://test');
-    const job = await client.createJob('hi');
+    const job = await client.createJob('hi', undefined, undefined, undefined, {
+      examples: [{ input: 'x' }],
+    });
     expect(job).toBe('1');
   });
 });
