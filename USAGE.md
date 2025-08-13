@@ -133,7 +133,7 @@ Judge vs Target model
 - **Judge**: fixed by server (`JUDGE_MODEL_ID`, default GPT-5). Clients cannot choose it.
 - **Judge caching & rate limits**: pairwise comparisons use an internal GPT-5 judge with LRU caching and a token-bucket limiter (`JUDGE_QPS_MAX`).
 - **BYO OpenAI key**: set `OPENAI_API_KEY` on the server to pass through as `X-OpenAI-Api-Key` to OpenRouter.
-- **Target model**: choose per request with `target_model_id`; if omitted, server uses `TARGET_DEFAULT_MODEL_ID`.
+- **Target model**: choose per request with `target_model_id`; if omitted, server uses `TARGET_MODEL_DEFAULT`.
 
 Examples CRUD
 - `POST /v1/examples/bulk` – upsert examples in bulk
