@@ -33,8 +33,7 @@ class OpenRouterProvider:
         timeout_config = (
             timeout
             if isinstance(timeout, httpx.Timeout)
-            else httpx.Timeout(timeout) if timeout is not None
-            else default_timeout
+            else httpx.Timeout(timeout) if timeout is not None else default_timeout
         )
         self.client = httpx.AsyncClient(
             timeout=timeout_config,
@@ -50,16 +49,22 @@ class OpenRouterProvider:
             messages = kwargs.get("messages")
             temperature = kwargs.get("temperature")
             max_tokens = kwargs.get("max_tokens")
-            model = kwargs.get("model") or settings.TARGET_DEFAULT_MODEL_ID
+            model = kwargs.get("model") or settings.TARGET_MODEL_DEFAULT
             body: Dict[str, object] = {
                 "model": model,
-                "messages": messages if messages is not None else [{"role": "user", "content": prompt}],
+                "messages": (
+                    messages
+                    if messages is not None
+                    else [{"role": "user", "content": prompt}]
+                ),
             }
             if temperature is not None:
                 body["temperature"] = temperature
             if max_tokens is not None:
                 body["max_tokens"] = max_tokens
-            resp = await self.client.post("https://openrouter.ai/api/v1/chat/completions", json=body)
+            resp = await self.client.post(
+                "https://openrouter.ai/api/v1/chat/completions", json=body
+            )
             data = resp.json()
             return data.get("choices", [{}])[0].get("message", {}).get("content", "")
         except Exception:
@@ -86,13 +91,19 @@ class OpenAIProvider:
             model = kwargs.get("model")
             body: Dict[str, object] = {
                 "model": model,
-                "messages": messages if messages is not None else [{"role": "user", "content": prompt}],
+                "messages": (
+                    messages
+                    if messages is not None
+                    else [{"role": "user", "content": prompt}]
+                ),
             }
             if temperature is not None:
                 body["temperature"] = temperature
             if max_tokens is not None:
                 body["max_tokens"] = max_tokens
-            resp = await self.client.post("https://api.openai.com/v1/chat/completions", json=body)
+            resp = await self.client.post(
+                "https://api.openai.com/v1/chat/completions", json=body
+            )
             data = resp.json()
             return data.get("choices", [{}])[0].get("message", {}).get("content", "")
         except Exception:

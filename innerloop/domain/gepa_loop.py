@@ -39,10 +39,14 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
     best_score = None
     stagnation = 0
     for gen in range(max_gens):
-        await emit(job, "generation_started", {"gen": gen, "population_size": len(population)})
+        await emit(
+            job, "generation_started", {"gen": gen, "population_size": len(population)}
+        )
         scored: List[Candidate] = []
         for cand in population:
-            res = await evaluate_batch(provider, "\n".join(cand.sections), pack.examples, settings)
+            res = await evaluate_batch(
+                provider, "\n".join(cand.sections), pack.examples, settings
+            )
             rollouts += 1
             cand.meta.update(
                 score=res.mean_scores.get("exact_match", 0.0),
@@ -81,7 +85,8 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
 
         # Build a plain dict view of examples for prompts
         ex_dicts = [
-            {"input": ex.input, "expected": ex.output, **ex.meta} for ex in pack.examples
+            {"input": ex.input, "expected": ex.output, **ex.meta}
+            for ex in pack.examples
         ]
         base_text = "\n".join(best.sections)
 
@@ -91,7 +96,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
             "author",
             gen,
             examples=ex_dicts,
-            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+            target_model=payload.get("target_model") or settings.TARGET_MODEL_DEFAULT,
         )
 
         # Reviewer critiques the draft
@@ -100,7 +105,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
             "reviewer",
             gen,
             examples=ex_dicts,
-            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+            target_model=payload.get("target_model") or settings.TARGET_MODEL_DEFAULT,
         )
 
         # Planner suggests concrete edits (we still keep edits in stub form)
@@ -109,7 +114,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
             "planner",
             gen,
             examples=ex_dicts,
-            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+            target_model=payload.get("target_model") or settings.TARGET_MODEL_DEFAULT,
         )
 
         # Reviser applies the plan and produces final revised prompt; also returns edits
@@ -118,7 +123,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
             "revision",
             gen,
             examples=ex_dicts,
-            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+            target_model=payload.get("target_model") or settings.TARGET_MODEL_DEFAULT,
         )
 
         # Merge lessons and stream update
@@ -126,10 +131,14 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
         for r in (author, reviewer, planner, revision):
             new_lessons.extend(cast(List[str], r.get("lessons", [])))
         lessons = update_lessons_journal(lessons, new_lessons)
-        await emit(job, "lessons_updated", {"count": len(lessons), "sample": lessons[:3]})
+        await emit(
+            job, "lessons_updated", {"count": len(lessons), "sample": lessons[:3]}
+        )
 
         # Apply revision edits to the best candidate to form next population seed
-        edited = apply_edits(best, cast(Sequence[Dict[str, Any]], revision.get("edits", [])))
+        edited = apply_edits(
+            best, cast(Sequence[Dict[str, Any]], revision.get("edits", []))
+        )
 
         await emit(job, "reflection_finished", {"gen": gen})
 
@@ -147,9 +156,9 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
         if stagnation >= 2:
             break
     return {
-        "best_prompt": "\n".join(frontier[0].sections) if frontier else payload.get("prompt", ""),
-        "frontier": [
-            {"id": c.id, "score": c.meta.get("score", 0.0)} for c in frontier
-        ],
+        "best_prompt": (
+            "\n".join(frontier[0].sections) if frontier else payload.get("prompt", "")
+        ),
+        "frontier": [{"id": c.id, "score": c.meta.get("score", 0.0)} for c in frontier],
         "lessons": lessons,
     }
