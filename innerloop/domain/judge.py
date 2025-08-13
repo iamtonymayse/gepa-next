@@ -92,7 +92,8 @@ _tokens = 1.0
 
 
 def _norm_pair(task: str, a: str, b: str) -> tuple[str, str, str]:
-    return (task or "",) + tuple(sorted([a or "", b or ""]))
+    a_n, b_n = sorted([a or "", b or ""])
+    return (task or "", a_n, b_n)
 
 
 def _cache_size() -> int:
