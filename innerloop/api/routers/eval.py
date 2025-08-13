@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
-from ..models import EvalStartRequest, OptimizeResponse, ErrorCode, error_response
-from ...settings import get_settings
-from ..sse import prelude_retry_ms, format_sse, SSE_TERMINALS
-import asyncio
+from ..models import EvalStartRequest, OptimizeResponse
 
 router = APIRouter()
 
