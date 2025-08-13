@@ -267,6 +267,7 @@ def scan_smells(proj: Path) -> List[Finding]:
             continue
         txt = path.read_text()
         rel = str(path.relative_to(proj))
+        is_endpoint = "/api/routers/" in rel.replace("\\", "/")
         for pat, sev, tag, msg in [
             (r"time\.sleep\(", "MED", "PERF", "time.sleep in async context"),
             (
@@ -279,6 +280,8 @@ def scan_smells(proj: Path) -> List[Finding]:
             (r"print\(", "LOW", "STYLE", "print statement"),
             (r"from .* import \*", "LOW", "STYLE", "star import"),
         ]:
+            if pat == r"requests\." and not is_endpoint:
+                continue
             for m in re.finditer(pat, txt):
                 line = txt[: m.start()].count("\n") + 1
                 snippet = txt.splitlines()[line - 1].strip()

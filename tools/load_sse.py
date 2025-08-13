@@ -6,6 +6,11 @@ from typing import List
 
 import anyio
 import httpx
+import logging
+import json
+
+log = logging.getLogger("gepa.loadtest")
+logging.basicConfig(level=logging.INFO)
 
 TERMINALS = {"finished", "failed", "cancelled", "shutdown"}
 
@@ -28,6 +33,7 @@ async def main() -> None:
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--duration", type=int, default=30)
     parser.add_argument("--base-url", default="http://localhost:8000")
+    parser.add_argument("--json", action="store_true", help="emit results as JSON to stdout")
     args = parser.parse_args()
 
     latencies: List[float] = []
@@ -54,9 +60,15 @@ async def main() -> None:
         p50 = statistics.quantiles(latencies, n=100)[49]
         p95 = statistics.quantiles(latencies, n=100)[94]
         p99 = statistics.quantiles(latencies, n=100)[98]
-        print(f"p50={p50:.3f}s p95={p95:.3f}s p99={p99:.3f}s errors={errors}")
+        if args.json:
+            print(json.dumps({"p50": p50, "p95": p95, "p99": p99, "errors": errors}))
+        else:
+            log.info("p50=%.3fs p95=%.3fs p99=%.3fs errors=%d", p50, p95, p99, errors)
     else:
-        print(f"no runs completed errors={errors}")
+        if args.json:
+            print(json.dumps({"message": "no runs completed", "errors": errors}))
+        else:
+            log.warning("no runs completed errors=%d", errors)
 
 
 if __name__ == "__main__":

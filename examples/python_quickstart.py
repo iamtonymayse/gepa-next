@@ -1,6 +1,9 @@
 import asyncio
+import logging
 from gepa_client import GepaClient
 
+log = logging.getLogger("gepa.examples")
+logging.basicConfig(level=logging.INFO)
 
 async def main() -> None:
     async with GepaClient("http://localhost:8000", openrouter_key="dev") as client:
@@ -10,8 +13,7 @@ async def main() -> None:
             last = env
             if env.type in {"finished", "failed", "cancelled"}:
                 break
-        print(last)
-
+        log.info("%s", last)
 
 if __name__ == "__main__":
     asyncio.run(main())
