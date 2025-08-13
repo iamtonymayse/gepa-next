@@ -13,6 +13,7 @@ from ...domain.mutations import mutate_prompt
 from ...domain.recombination import recombine
 from ...domain.optimize_engine import pareto_filter, tournament_rank
 from ...domain.retrieval import retrieve
+from ...domain.eval_runner import run_eval
 from ...settings import get_settings
 from ..sse import SSE_TERMINALS
 from ..metrics import inc
@@ -147,6 +148,29 @@ class JobRegistry:
     async def _run_job(self, job: Job, iterations: int, payload: Dict[str, Any]) -> None:
         settings = get_settings()
         try:
+            if payload.get("__eval__"):
+                async def _emit_ev(ev, data):
+                    await self._emit(job, ev, data)
+
+                await _emit_ev("started", {})
+                await run_eval(
+                    self.store,
+                    base_prompt=payload.get("name") or payload.get("prompt", ""),
+                    target_model=payload.get("target_model"),
+                    seed=int(payload.get("seed", 42)),
+                    limits={
+                        "max_examples": payload.get("max_examples"),
+                        "tournament_size": payload.get("tournament_size"),
+                        "recombination_rate": payload.get("recombination_rate"),
+                        "early_stop_patience": payload.get("early_stop_patience"),
+                    },
+                    emit=lambda ev, data: self._emit(job, ev, data),
+                )
+                job.result = job.result or {}
+                job.status = JobStatus.FINISHED
+                await self._emit(job, "finished", job.result or {})
+                return
+
             job.status = JobStatus.RUNNING
             await self._emit(job, "started", {})
             if job.status == JobStatus.FAILED:

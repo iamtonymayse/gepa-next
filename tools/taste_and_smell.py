@@ -365,6 +365,30 @@ def fastapi_checks(proj: Path) -> Tuple[Dict[str, str], List[Finding]]:
                         "",
                     )
                 )
+    examples_router = proj / "innerloop" / "api" / "routers" / "examples.py"
+    if not examples_router.exists():
+        findings.append(
+            Finding(
+                "LOW",
+                "API",
+                str(examples_router.relative_to(proj)),
+                0,
+                "/v1/examples route missing",
+                "",
+            )
+        )
+    eval_router = proj / "innerloop" / "api" / "routers" / "eval.py"
+    if not eval_router.exists() or "/eval/start" not in eval_router.read_text():
+        findings.append(
+            Finding(
+                "LOW",
+                "API",
+                str(eval_router.relative_to(proj)),
+                0,
+                "/v1/eval/start route missing",
+                "",
+            )
+        )
     return checks, findings
 
 

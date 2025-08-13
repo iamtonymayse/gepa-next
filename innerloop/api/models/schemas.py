@@ -25,16 +25,28 @@ class BudgetSpec(BaseModel):
 
 class ExampleIn(BaseModel):
     id: str | None = None
-    name: str | None = None
     input: str
     expected: str | None = None
-    tags: List[str] | None = None
+    meta: Dict[str, Any] | None = None
 
     model_config = {"extra": "forbid"}
 
 
-class Example(ExampleIn):
+class Example(BaseModel):
     id: str
+    input: str
+    expected: str | None = None
+    meta: Dict[str, Any] | None = None
+
+
+class EvalStartRequest(BaseModel):
+    name: str | None = None
+    target_model: str | None = None
+    max_examples: int | None = None
+    seed: int | None = 42
+    tournament_size: int | None = None
+    recombination_rate: float | None = None
+    early_stop_patience: int | None = None
 
 
 class ObjectiveSpec(str, Enum):

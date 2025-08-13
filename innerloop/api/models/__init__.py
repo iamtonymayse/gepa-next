@@ -7,6 +7,7 @@ from .schemas import (
     SSEEnvelope,
     ExampleIn,
     Example,
+    EvalStartRequest,
     ObjectiveSpec,
 )
 from .errors import APIError, ErrorCode, error_response
@@ -18,6 +19,7 @@ __all__ = [
     "SSEEnvelope",
     "ExampleIn",
     "Example",
+    "EvalStartRequest",
     "ObjectiveSpec",
     "APIError",
     "ErrorCode",

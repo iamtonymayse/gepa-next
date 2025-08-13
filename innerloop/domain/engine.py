@@ -138,6 +138,13 @@ def get_judge_provider(settings: Optional[Settings] = None) -> ModelProvider:
     return LocalEchoProvider()
 
 
+def get_provider_from_env(settings: Optional[Settings] = None) -> ModelProvider:
+    settings = settings or get_settings()
+    if settings.USE_MODEL_STUB or not settings.OPENROUTER_API_KEY:
+        return LocalEchoProvider()
+    return OpenRouterProvider(settings.OPENROUTER_API_KEY)
+
+
 async def close_all_providers() -> None:
     global _target_provider_singleton, _judge_provider_singleton
     for prov in (_target_provider_singleton, _judge_provider_singleton):
