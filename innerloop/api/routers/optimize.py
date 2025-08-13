@@ -45,7 +45,11 @@ async def create_optimize_job(
     return OptimizeResponse(job_id=job.id)
 
 
-@router.get("/optimize/{job_id}", response_model=JobState)
+@router.get(
+    "/optimize/{job_id}",
+    response_model=JobState,
+    responses={404: {"model": APIError}},
+)
 async def get_job(request: Request, job_id: str) -> JobState | JSONResponse:
     registry: JobRegistry = request.app.state.registry
     store = request.app.state.store
@@ -74,7 +78,11 @@ async def get_job(request: Request, job_id: str) -> JobState | JSONResponse:
     )
 
 
-@router.delete("/optimize/{job_id}", response_model=JobState)
+@router.delete(
+    "/optimize/{job_id}",
+    response_model=JobState,
+    responses={404: {"model": APIError}, 409: {"model": APIError}},
+)
 async def cancel_job_endpoint(request: Request, job_id: str):
     registry: JobRegistry = request.app.state.registry
     job = registry.jobs.get(job_id)
