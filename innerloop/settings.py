@@ -66,8 +66,7 @@ class Settings(BaseSettings):
     SQLITE_PATH: str = "gepa.db"
     COST_TRACKING_ENABLED: bool = True
     MODEL_PRICES_JSON: str = (
-        '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},'
-        '"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
+        '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},' '"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
     )
     EVAL_MAX_EXAMPLES: int = 100
     EVAL_MAX_CONCURRENCY: int = 8
