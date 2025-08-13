@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request, Response
 
 from ..jobs.registry import JobRegistry, JobStatus
-from ..models import ErrorCode, JobState, error_response
+from ..models import ErrorCode, ErrorResponse, JobState, error_response
 
 router = APIRouter()
 
@@ -25,8 +25,12 @@ async def list_jobs(request: Request) -> dict:
     }
 
 
-@router.get("/jobs/{job_id}")
-async def get_job(request: Request, job_id: str):
+@router.get(
+    "/jobs/{job_id}",
+    response_model=JobState,
+    responses={404: {"model": ErrorResponse}},
+)
+async def get_job(request: Request, job_id: str) -> JobState | Response:
     store = request.app.state.store
     record = await store.get_job(job_id)
     if not record:
@@ -52,8 +56,12 @@ async def delete_job(request: Request, job_id: str) -> Response:
     return Response(status_code=204)
 
 
-@router.post("/jobs/{job_id}/cancel")
-async def cancel_job(request: Request, job_id: str):
+@router.post(
+    "/jobs/{job_id}/cancel",
+    response_model=JobState,
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+)
+async def cancel_job(request: Request, job_id: str) -> JobState | Response:
     registry: JobRegistry = request.app.state.registry
     job = registry.jobs.get(job_id)
     if not job:

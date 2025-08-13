@@ -81,6 +81,7 @@ jobs:
         run: |
           schemathesis run \
             --app innerloop.main:app \
+            --base-url http://localhost \
             --force-schema-version=30 \
             --checks all \
             --hypothesis-max-examples=20 \
