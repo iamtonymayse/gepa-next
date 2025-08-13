@@ -4,20 +4,13 @@ import asyncio
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
-from ..jobs.registry import JobRegistry, JobStatus
-from ..models import (
-    ErrorCode,
-    ErrorResponse,
-    JobState,
-    OptimizeRequest,
-    OptimizeResponse,
-    error_response,
-)
-from ..sse import format_sse, prelude_retry_ms, SSE_TERMINALS
-from ..metrics import inc
 from ...settings import get_settings
+from ..jobs.registry import JobRegistry, JobStatus
+from ..metrics import inc
+from ..models import ErrorCode, ErrorResponse, JobState, OptimizeRequest, OptimizeResponse, error_response
+from ..sse import SSE_TERMINALS, format_sse, prelude_retry_ms
 
 router = APIRouter()
 
@@ -27,7 +20,11 @@ router = APIRouter()
     response_model=OptimizeResponse,
     summary="Create optimization job",
     description="Create an optimization job. Use optional Idempotency-Key header to dedupe submissions.",
-    responses={401: {"model": ErrorResponse}, 429: {"model": ErrorResponse}, 413: {"model": ErrorResponse}},
+    responses={
+        401: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
+    },
 )
 async def create_optimize_job(
     request: Request,
@@ -43,9 +40,7 @@ async def create_optimize_job(
         )
     registry: JobRegistry = request.app.state.registry
     idem_key = request.headers.get("Idempotency-Key")
-    job, created = await registry.create_job(
-        iterations, body.model_dump(), idempotency_key=idem_key
-    )
+    job, created = await registry.create_job(iterations, body.model_dump(), idempotency_key=idem_key)
     request.state.job_id = job.id
     if created:
         inc("jobs_created")
@@ -64,9 +59,7 @@ async def get_job(request: Request, job_id: str) -> JobState | JSONResponse:
     if job is None:
         record = await store.get_job(job_id)
         if record is None:
-            return error_response(
-                ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id
-            )
+            return error_response(ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id)
         request.state.job_id = job_id
         return JobState(
             job_id=record["id"],
@@ -94,9 +87,7 @@ async def cancel_job_endpoint(request: Request, job_id: str):
     registry: JobRegistry = request.app.state.registry
     job = registry.jobs.get(job_id)
     if job is None:
-        return error_response(
-            ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id
-        )
+        return error_response(ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id)
     if job.status != JobStatus.RUNNING:
         return error_response(
             ErrorCode.not_cancelable,
@@ -122,7 +113,8 @@ async def cancel_job_endpoint(request: Request, job_id: str):
     description="Server-Sent Events stream. Use Last-Event-ID header to resume from a specific event id.",
     responses={
         200: {"content": {"text/event-stream": {}}},
-        404: {"model": ErrorResponse},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Job not found"},
     },
 )
 async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
@@ -132,17 +124,13 @@ async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
     if job is None:
         record = await store.get_job(job_id)
         if record is None:
-            return error_response(
-                ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id
-            )
+            return error_response(ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id)
     request.state.job_id = job_id
 
     settings = get_settings()
 
     async def event_stream() -> AsyncGenerator[bytes, None]:
-        last_id_header = request.headers.get("last-event-id") or request.query_params.get(
-            "last_event_id"
-        )
+        last_id_header = request.headers.get("last-event-id") or request.query_params.get("last_event_id")
         last_id = int(last_id_header) if last_id_header and last_id_header.isdigit() else 0
 
         inc("sse_clients", 1)
@@ -159,9 +147,7 @@ async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
         try:
             while True:
                 try:
-                    envelope = await asyncio.wait_for(
-                        job.queue.get(), timeout=settings.SSE_PING_INTERVAL_S
-                    )
+                    envelope = await asyncio.wait_for(job.queue.get(), timeout=settings.SSE_PING_INTERVAL_S)
                     if envelope["id"] <= last_id:
                         continue
                     yield format_sse(envelope["type"], envelope).encode()

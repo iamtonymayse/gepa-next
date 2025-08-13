@@ -1,18 +1,18 @@
 import argparse
 import asyncio
+import json
+import logging
 import statistics
 import time
 from typing import List
 
 import anyio
 import httpx
-import logging
-import json
+
+from innerloop.api.sse import SSE_TERMINALS as TERMINALS
 
 log = logging.getLogger("gepa.loadtest")
 logging.basicConfig(level=logging.INFO)
-
-TERMINALS = {"finished", "failed", "cancelled", "shutdown"}
 
 
 async def run_client(base_url: str, iterations: int, stats: List[float]) -> None:

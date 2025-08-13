@@ -13,7 +13,7 @@ SNAP_PATH = Path("docs/openapi.snap.json")
 
 def canonical(obj: dict) -> str:
     """Stable dump for reproducible diffs"""
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"))
+    return json.dumps(obj, sort_keys=True, separators=(",", ":")) + "\n"
 
 
 def main() -> int:
@@ -46,4 +46,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

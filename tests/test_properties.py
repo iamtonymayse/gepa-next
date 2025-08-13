@@ -6,16 +6,12 @@ from pathlib import Path
 from typing import List
 
 from fastapi.testclient import TestClient
-from hypothesis import (
-    HealthCheck,
-    given,
-    settings as hsettings,
-    strategies as st,
-)
+from hypothesis import HealthCheck, given
+from hypothesis import settings as hsettings
+from hypothesis import strategies as st
 
+from innerloop.api.sse import SSE_TERMINALS as TERMINALS
 from innerloop.domain.optimize_engine import pareto_filter
-
-TERMINALS = {"finished", "failed", "cancelled", "shutdown"}
 
 
 def _dominates(a: tuple[float, ...], b: tuple[float, ...]) -> bool:
@@ -36,6 +32,7 @@ def test_pareto_invariants(items: List[str], n: int) -> None:
     # Subset of inputs
     for x in r1:
         assert x in items
+
     # No member strictly dominated by another member under default objectives
     def score(s: str) -> tuple[int, int]:
         return (len(s), -len(set(s.lower().split())))
@@ -100,9 +97,9 @@ def test_sse_golden_sequence(monkeypatch) -> None:
     importlib.reload(main)
     with TestClient(main.app) as client:
         headers = {"Authorization": "Bearer token"}
-        job_id = client.post(
-            "/v1/optimize", json={"prompt": "hi"}, params={"iterations": 1}, headers=headers
-        ).json()["job_id"]
+        job_id = client.post("/v1/optimize", json={"prompt": "hi"}, params={"iterations": 1}, headers=headers).json()[
+            "job_id"
+        ]
 
         with client.stream("GET", f"/v1/optimize/{job_id}/events", headers=headers) as stream:
             it = stream.iter_lines()
@@ -119,4 +116,3 @@ def test_sse_golden_sequence(monkeypatch) -> None:
     snap = Path("tests/snapshots/sse_events.snap.json")
     expect = json.loads(snap.read_text(encoding="utf-8"))
     assert seen == expect
-

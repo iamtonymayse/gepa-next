@@ -5,12 +5,20 @@ from uuid import UUID
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
-from ..models import EvalStartRequest, OptimizeResponse, ErrorResponse
+from ..models import ErrorResponse, EvalStartRequest, OptimizeResponse
 
 router = APIRouter()
 
 
-@router.post("/eval/start", response_model=OptimizeResponse, summary="Start evaluation job")
+@router.post(
+    "/eval/start",
+    response_model=OptimizeResponse,
+    summary="Start evaluation job",
+    responses={
+        401: {"description": "Unauthorized"},
+        413: {"description": "Payload too large"},
+    },
+)
 async def eval_start(request: Request, body: EvalStartRequest):
     reg = request.app.state.registry
     payload = {"__eval__": True, **body.model_dump(exclude_none=True)}
