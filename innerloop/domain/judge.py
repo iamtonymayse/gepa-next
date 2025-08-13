@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from functools import lru_cache
 from typing import Any, Dict, List
 
 from .engine import get_judge_provider, get_provider_from_env

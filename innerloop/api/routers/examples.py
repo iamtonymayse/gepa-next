@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
-from ..models import ExampleIn, error_response, ErrorCode
+from ..models import ExampleIn
 import uuid
 
 router = APIRouter()

@@ -58,12 +58,15 @@ class Settings(BaseSettings):
     SQLITE_PATH: str = "gepa.db"
     TARGET_DEFAULT_MODEL: str = "openai:gpt-4o-mini"  # default target; API may override
     COST_TRACKING_ENABLED: bool = True
-    MODEL_PRICES_JSON: str = '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
+    MODEL_PRICES_JSON: str = (
+        '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},'
+        '"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
+    )
     EVAL_MAX_EXAMPLES: int = 100
     EVAL_MAX_CONCURRENCY: int = 8
 
     @computed_field
-    def MODEL_PRICES(self) -> dict[str, dict[str, float]]:
+    def MODEL_PRICES(self) -> dict[str, dict[str, float]]:  # noqa: N802
         try:
             return _json.loads(self.MODEL_PRICES_JSON)
         except Exception:

@@ -1,4 +1,5 @@
-import importlib, asyncio
+import importlib
+import asyncio
 from innerloop.api.jobs.store import MemoryJobStore
 
 
