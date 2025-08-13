@@ -1,4 +1,5 @@
 import importlib
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -103,3 +104,26 @@ def test_request_id_header(monkeypatch):
         assert "x-request-id" in resp.headers
         resp2 = client.get("/healthz", headers={"X-Request-ID": "abc"})
         assert resp2.headers["x-request-id"] == "abc"
+
+
+@pytest.mark.timeout(5)
+def test_walltime_deadline(monkeypatch):
+    client, settings_module = create_client(
+        monkeypatch,
+        OPENROUTER_API_KEY="dev",
+        MAX_WALL_TIME_S=0.01,
+    )
+    with client:
+        resp = client.post(
+            "/optimize", json={"prompt": "hi"}, params={"iterations": 999}
+        )
+        job_id = resp.json()["job_id"]
+        with client.stream("GET", f"/optimize/{job_id}/events") as stream:
+            line_iter = stream.iter_lines()
+            next(line_iter)
+            for line in line_iter:
+                if line.startswith("data:"):
+                    env = json.loads(line.split(":", 1)[1])
+                    if env["type"] == "failed":
+                        assert env["data"].get("error") == "deadline_exceeded"
+                        break

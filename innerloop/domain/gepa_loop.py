@@ -76,7 +76,9 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
                 },
             },
         )
-        refl: Dict[str, Any] = await run_reflection("", "gepa", gen, [])
+        refl: Dict[str, Any] = await run_reflection(
+            "", "gepa", gen, examples=None, model_params=None
+        )
         lessons = update_lessons_journal(lessons, cast(List[str], refl.get("lessons", [])))
         await emit(job, "lessons_updated", {"count": len(lessons), "sample": lessons[:3]})
         edited = apply_edits(best, cast(Sequence[Dict[str, Any]], refl.get("edits", [])))

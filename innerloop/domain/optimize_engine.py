@@ -41,5 +41,13 @@ def pareto_filter(
                 break
         if not dominated:
             front.append((item_i, score_i))
-    front.sort(key=lambda t: t[1])
+    front.sort(key=lambda t: (t[1], str(t[0])))
     return [item for item, _ in front[:n]]
+
+
+def rank_candidates(
+    items: List[str],
+    objectives: List[Callable[[str], float]] | None,
+    n: int = 1,
+) -> List[str]:
+    return pareto_filter(items, n=n, objectives=objectives)

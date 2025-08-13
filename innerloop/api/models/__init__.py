@@ -1,6 +1,14 @@
 """API models for GEPA."""
 
-from .schemas import OptimizeRequest, OptimizeResponse, JobState, SSEEnvelope
+from .schemas import (
+    OptimizeRequest,
+    OptimizeResponse,
+    JobState,
+    SSEEnvelope,
+    ExampleIn,
+    Example,
+    ObjectiveSpec,
+)
 from .errors import APIError, ErrorCode, error_response
 
 __all__ = [
@@ -8,6 +16,9 @@ __all__ = [
     "OptimizeResponse",
     "JobState",
     "SSEEnvelope",
+    "ExampleIn",
+    "Example",
+    "ObjectiveSpec",
     "APIError",
     "ErrorCode",
     "error_response",
