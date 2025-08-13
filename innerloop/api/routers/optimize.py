@@ -4,9 +4,11 @@ import asyncio
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
+from ...settings import get_settings
 from ..jobs.registry import JobRegistry, JobStatus
+from ..metrics import inc
 from ..models import (
     ErrorCode,
     ErrorResponse,
@@ -15,9 +17,7 @@ from ..models import (
     OptimizeResponse,
     error_response,
 )
-from ..sse import format_sse, prelude_retry_ms, SSE_TERMINALS
-from ..metrics import inc
-from ...settings import get_settings
+from ..sse import SSE_TERMINALS, format_sse, prelude_retry_ms
 
 router = APIRouter()
 
@@ -27,7 +27,11 @@ router = APIRouter()
     response_model=OptimizeResponse,
     summary="Create optimization job",
     description="Create an optimization job. Use optional Idempotency-Key header to dedupe submissions.",
-    responses={401: {"model": ErrorResponse}, 429: {"model": ErrorResponse}, 413: {"model": ErrorResponse}},
+    responses={
+        401: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
+    },
 )
 async def create_optimize_job(
     request: Request,
@@ -122,7 +126,8 @@ async def cancel_job_endpoint(request: Request, job_id: str):
     description="Server-Sent Events stream. Use Last-Event-ID header to resume from a specific event id.",
     responses={
         200: {"content": {"text/event-stream": {}}},
-        404: {"model": ErrorResponse},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Job not found"},
     },
 )
 async def optimize_events(request: Request, job_id: str) -> StreamingResponse:

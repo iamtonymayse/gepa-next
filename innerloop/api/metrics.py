@@ -16,18 +16,22 @@ _counters: Dict[str, int] = {
 
 _hist: Dict[str, List[float]] = {}
 
+
 def inc(name: str, value: int = 1) -> None:
     _counters[name] = _counters.get(name, 0) + value
+
 
 def observe(name: str, value: float) -> None:
     arr = _hist.setdefault(name, [])
     bisect.insort(arr, float(value))
+
 
 def _pct(arr: List[float], p: float) -> float:
     if not arr:
         return 0.0
     idx = max(0, min(len(arr) - 1, int(round((p / 100.0) * (len(arr) - 1)))))
     return arr[idx]
+
 
 def snapshot() -> Dict[str, float | int | dict]:
     data: Dict[str, float | int | dict] = {**_counters}
@@ -42,3 +46,20 @@ def snapshot() -> Dict[str, float | int | dict]:
         }
     data["histograms"] = out
     return data
+
+
+def snapshot_metrics_json() -> Dict[str, float | int | dict]:
+    """Return metrics snapshot suitable for JSON serialization."""
+    return snapshot()
+
+
+def snapshot_metrics_text() -> str:
+    """Render metrics in a Prometheus-style text exposition format."""
+    data = snapshot()
+    lines: List[str] = []
+    for key, value in data.items():
+        if isinstance(value, (int, float)):
+            lines.append(f"# HELP {key} {key}")
+            lines.append(f"# TYPE {key} counter")
+            lines.append(f"{key} {value}")
+    return "\n".join(lines) + "\n"

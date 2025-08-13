@@ -14,7 +14,10 @@ except Exception:  # pragma: no cover
     def json_dumps(obj: Dict) -> str:
         return json.dumps(obj, separators=(",", ":"))
 
-SSE_TERMINALS = {"finished", "failed", "cancelled", "shutdown"}
+
+# Terminal event names used across routers and clients.
+# Keep this list stable; tests rely on it.
+SSE_TERMINALS = {"finished", "failed", "cancelled"}
 
 
 def format_sse(event_type: str, envelope: Dict) -> str:
@@ -32,4 +35,3 @@ def format_sse(event_type: str, envelope: Dict) -> str:
 
 def prelude_retry_ms(ms: int) -> bytes:
     return f"retry: {ms}\n\n".encode()
-

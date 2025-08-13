@@ -1,13 +1,23 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
-from ..models import ExampleIn
 import uuid
+
+from fastapi import APIRouter, Request
+
+from ..models import ExampleIn
 
 router = APIRouter()
 
 
-@router.post("/examples/bulk", response_model=dict, status_code=200)
+@router.post(
+    "/examples/bulk",
+    response_model=dict,
+    status_code=200,
+    responses={
+        401: {"description": "Unauthorized"},
+        413: {"description": "Payload too large"},
+    },
+)
 async def examples_bulk(request: Request, items: list[ExampleIn]):
     store = request.app.state.store
     payload = []
