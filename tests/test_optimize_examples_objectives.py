@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 def create_client(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
     monkeypatch.setenv("USE_MODEL_STUB", "true")
+    monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     import innerloop.settings as settings
     importlib.reload(settings)
     import innerloop.main as main
@@ -28,7 +29,9 @@ def test_optimize_examples_objectives(monkeypatch):
         resp = client.post("/v1/optimize", json=body, params={"iterations": 2})
         assert resp.status_code == 200
         job_id = resp.json()["job_id"]
-        with client.stream("GET", f"/v1/optimize/{job_id}/events") as stream:
+        with client.stream(
+            "GET", f"/v1/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+        ) as stream:
             line_iter = stream.iter_lines()
             first = next(line_iter)
             assert first.startswith("retry:")
@@ -52,7 +55,9 @@ def test_optimize_examples_objectives(monkeypatch):
         job2 = resp2.json()["job_id"]
         props = []
         for job in (job1, job2):
-            with client.stream("GET", f"/v1/optimize/{job}/events") as stream:
+            with client.stream(
+                "GET", f"/v1/optimize/{job}/events", headers={"Authorization": "Bearer token"}
+            ) as stream:
                 line_iter = stream.iter_lines()
                 next(line_iter)
                 for line in line_iter:

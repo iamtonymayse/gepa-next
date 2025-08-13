@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 @pytest.mark.timeout(10)
 def test_gepa_loop_sse(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     import innerloop.settings as settings
     importlib.reload(settings)
     import innerloop.main as main
@@ -23,7 +24,9 @@ def test_gepa_loop_sse(monkeypatch):
         )
         job_id = resp.json()["job_id"]
         events = []
-        with client.stream("GET", f"/optimize/{job_id}/events") as stream:
+        with client.stream(
+            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+        ) as stream:
             for line in stream.iter_lines():
                 if line.startswith("event:"):
                     events.append(line.split(":", 1)[1].strip())
@@ -33,5 +36,7 @@ def test_gepa_loop_sse(monkeypatch):
         assert "candidate_scored" in events
         assert "frontier_updated" in events
         assert "finished" in events
-        state = client.get(f"/optimize/{job_id}").json()
+        state = client.get(
+            f"/optimize/{job_id}", headers={"Authorization": "Bearer token"}
+        ).json()
         assert "best_prompt" in state["result"]

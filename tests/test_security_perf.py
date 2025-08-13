@@ -19,11 +19,16 @@ def create_client(monkeypatch, **env):
 
 
 def test_sse_headers(monkeypatch):
-    client, _ = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
+    client, _ = create_client(
+        monkeypatch, OPENROUTER_API_KEY="dev", API_BEARER_TOKENS='["token"]'
+    )
     with client:
         resp = client.post("/optimize", json={"prompt": "hi"}, params={"iterations": 1})
         job_id = resp.json()["job_id"]
-        resp = client.get(f"/optimize/{job_id}/events")
+        resp = client.get(
+            f"/optimize/{job_id}/events",
+            headers={"Authorization": "Bearer token"},
+        )
         assert resp.headers["cache-control"] == "no-store"
         assert resp.headers["connection"] == "keep-alive"
         assert resp.headers["x-accel-buffering"] == "no"
@@ -60,11 +65,15 @@ def test_token_compare(monkeypatch):
 
 @pytest.mark.timeout(5)
 def test_iterations_clamp(monkeypatch):
-    client, settings_module = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
+    client, settings_module = create_client(
+        monkeypatch, OPENROUTER_API_KEY="dev", API_BEARER_TOKENS='["token"]'
+    )
     with client:
         resp = client.post("/optimize", json={"prompt": "hi"}, params={"iterations": 9999})
         job_id = resp.json()["job_id"]
-        with client.stream("GET", f"/optimize/{job_id}/events") as stream:
+        with client.stream(
+            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+        ) as stream:
             line_iter = stream.iter_lines()
             progress = 0
             for line in line_iter:
@@ -111,6 +120,7 @@ def test_walltime_deadline(monkeypatch):
     client, settings_module = create_client(
         monkeypatch,
         OPENROUTER_API_KEY="dev",
+        API_BEARER_TOKENS='["token"]',
         MAX_WALL_TIME_S=0.01,
     )
     with client:
@@ -118,7 +128,9 @@ def test_walltime_deadline(monkeypatch):
             "/optimize", json={"prompt": "hi"}, params={"iterations": 999}
         )
         job_id = resp.json()["job_id"]
-        with client.stream("GET", f"/optimize/{job_id}/events") as stream:
+        with client.stream(
+            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+        ) as stream:
             line_iter = stream.iter_lines()
             next(line_iter)
             for line in line_iter:
