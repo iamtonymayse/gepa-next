@@ -1,23 +1,23 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 import time
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from ...domain.objectives import get_objectives
+from ...domain.eval_runner import run_eval
 from ...domain.gepa_loop import gepa_loop
 from ...domain.judge import judge_scores
 from ...domain.mutations import mutate_prompt
+from ...domain.objectives import get_objectives
+from ...domain.optimize_engine import pareto_filter, pareto_v2, tournament_rank
 from ...domain.recombination import recombine
-from ...domain.optimize_engine import pareto_filter, tournament_rank, pareto_v2
 from ...domain.retrieval import retrieve
-from ...domain.eval_runner import run_eval
 from ...settings import get_settings
-from ..sse import SSE_TERMINALS
 from ..metrics import inc, observe
+from ..sse import SSE_TERMINALS
 from .store import JobStore
 
 
@@ -27,8 +27,6 @@ class JobStatus(str, Enum):
     FINISHED = "finished"
     FAILED = "failed"
     CANCELLED = "cancelled"
-
-
 
 
 @dataclass
@@ -45,7 +43,8 @@ class Job:
 
     def __post_init__(self) -> None:
         settings = get_settings()
-        self.queue = asyncio.Queue(maxsize=settings.SSE_QUEUE_MAXSIZE)
+        # Bound the per-job SSE buffer to avoid unbounded growth.
+        self.queue = asyncio.Queue(maxsize=settings.SSE_BUFFER_SIZE)
 
 
 class JobRegistry:
@@ -60,9 +59,7 @@ class JobRegistry:
         settings = get_settings()
         now = asyncio.get_event_loop().time()
         if idempotency_key:
-            existing = await self.store.get_idempotent(
-                idempotency_key, now, settings.IDEMPOTENCY_TTL_S
-            )
+            existing = await self.store.get_idempotent(idempotency_key, now, settings.IDEMPOTENCY_TTL_S)
             if existing:
                 job = self.jobs.get(existing)
                 if job:
@@ -111,9 +108,7 @@ class JobRegistry:
         job.next_event_id += 1
         start_put = time.perf_counter()
         try:
-            await asyncio.wait_for(
-                job.queue.put(envelope), timeout=settings.SSE_BACKPRESSURE_FAIL_TIMEOUT_S
-            )
+            await asyncio.wait_for(job.queue.put(envelope), timeout=settings.SSE_BACKPRESSURE_FAIL_TIMEOUT_S)
             put_ms = (time.perf_counter() - start_put) * 1000.0
             observe("sse_put_ms", put_ms)
         except asyncio.TimeoutError:
@@ -153,6 +148,7 @@ class JobRegistry:
         settings = get_settings()
         try:
             if payload.get("__eval__"):
+
                 async def _emit_ev(ev, data):
                     await self._emit(job, ev, data)
 
@@ -161,8 +157,7 @@ class JobRegistry:
                 await run_eval(
                     self.store,
                     base_prompt=payload.get("name") or payload.get("prompt", ""),
-                    target_model=payload.get("target_model")
-                    or payload.get("target_model_id"),
+                    target_model=payload.get("target_model") or payload.get("target_model_id"),
                     seed=int(payload.get("seed", 42)),
                     limits={
                         "max_examples": payload.get("max_examples"),
@@ -196,25 +191,14 @@ class JobRegistry:
             iterations = min(iterations, settings.MAX_ITERATIONS)
             prompt = payload.get("prompt", "")
             target_model = (
-                payload.get("target_model")
-                or payload.get("target_model_id")
-                or settings.TARGET_MODEL_DEFAULT
+                payload.get("target_model") or payload.get("target_model_id") or settings.TARGET_MODEL_DEFAULT
             )
-            rubric = (
-                payload.get("evaluation_rubric")
-                or settings.EVALUATION_RUBRIC_DEFAULT
-            )
+            rubric = payload.get("evaluation_rubric") or settings.EVALUATION_RUBRIC_DEFAULT
             examples = payload.get("examples") or []
             objective_names: List[str] = payload.get("objectives") or ["brevity", "diversity", "coverage"]
-            recombination_rate = (
-                payload.get("recombination_rate") or settings.RECOMBINATION_RATE
-            )
-            tournament_size = (
-                payload.get("tournament_size") or settings.TOURNAMENT_SIZE
-            )
-            early_stop_patience = (
-                payload.get("early_stop_patience") or settings.EARLY_STOP_PATIENCE
-            )
+            recombination_rate = payload.get("recombination_rate") or settings.RECOMBINATION_RATE
+            tournament_size = payload.get("tournament_size") or settings.TOURNAMENT_SIZE
+            early_stop_patience = payload.get("early_stop_patience") or settings.EARLY_STOP_PATIENCE
             task = prompt or (examples[0]["input"] if examples else "")
             retrieved = await retrieve(task, settings.RETRIEVAL_MAX_EXAMPLES, self.store)
             examples = (examples + retrieved)[: settings.MAX_EXAMPLES_PER_JOB]
@@ -244,9 +228,7 @@ class JobRegistry:
                 recombos = recombine(prev_pool, recombination_rate, seed + i)
                 candidates = [base] + mutants + recombos
                 await self._emit(job, "mutation", {"count": len(mutants)})
-                front = pareto_filter(
-                    candidates, n=settings.MAX_CANDIDATES, objectives=objectives
-                )
+                front = pareto_filter(candidates, n=settings.MAX_CANDIDATES, objectives=objectives)
                 if settings.ENABLE_PARETO_V2:
                     ranked = await pareto_v2(
                         prompt=task,
@@ -298,9 +280,7 @@ class JobRegistry:
             det = scores_for(best) if objective_names else {}
             judge_final = await judge_scores(task, best, examples, objective_names)
             result_scores = (
-                {**det, "judge": judge_final["scores"]}
-                if objective_names
-                else {"judge": judge_final["scores"]}
+                {**det, "judge": judge_final["scores"]} if objective_names else {"judge": judge_final["scores"]}
             )
             job.result = {
                 "proposal": best,

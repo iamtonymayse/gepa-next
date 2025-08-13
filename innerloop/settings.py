@@ -17,9 +17,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     CORS_ALLOWED_ORIGINS: List[str] = Field(default_factory=list)
     SSE_RETRY_MS: int = 1500
-    SSE_QUEUE_MAXSIZE: int = 100
     SSE_PING_INTERVAL_S: float = 1.0
     SSE_BACKPRESSURE_FAIL_TIMEOUT_S: float = 2.0
+    # Max number of SSE events buffered per job before producers apply backpressure.
     SSE_BUFFER_SIZE: int = 200
     MAX_ITERATIONS: int = 4
     # Logging
@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     SQLITE_PATH: str = "gepa.db"
     COST_TRACKING_ENABLED: bool = True
     MODEL_PRICES_JSON: str = (
-        '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},' '"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
+        '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
     )
     EVAL_MAX_EXAMPLES: int = 100
     EVAL_MAX_CONCURRENCY: int = 8

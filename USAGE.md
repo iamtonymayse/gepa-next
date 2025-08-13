@@ -156,7 +156,7 @@ Full request with examples and objectives:
     {"input": "another"}
   ],
   "objectives": ["brevity", "diversity", "coverage"],
-  "target_model_id": "gpt-4o-mini"
+  "target_model_id": "openai:gpt-4o-mini"
 }
 ```
 
@@ -319,8 +319,7 @@ OPENROUTER_API_KEY	unset	Enables /v1/optimize POST bypass when set and no Author
 CORS_ALLOWED_ORIGINS	[]	Enable CORS for given origins
 SSE_RETRY_MS	1500	Suggested client retry backoff
 SSE_PING_INTERVAL_S	1.0	Idle ping cadence
-SSE_QUEUE_MAXSIZE	100	Per-job event queue bound
-SSE_BUFFER_SIZE	200	Ring buffer kept per job for resume
+SSE_BUFFER_SIZE	256	Per-job SSE event buffer and resume ring buffer
 SSE_BACKPRESSURE_FAIL_TIMEOUT_S	2 × ping	Fail job if .put() blocks this long
 MAX_ITERATIONS	10	Upper bound for iterations
 MAX_REQUEST_BYTES	65536	Request size cap (413 if exceeded)
