@@ -25,6 +25,7 @@ class ExamplePack:
 
 _EXAMPLES_DIR = Path(__file__).resolve().parents[2] / "gepa_next" / "examples"
 _MANIFEST_PATH = _EXAMPLES_DIR / "manifest.yaml"
+_EXCLUDED_KEYS = {"id", "question", "answer", "text", "label", "input", "output"}
 
 
 def load_pack(name: str) -> ExamplePack:
@@ -49,6 +50,6 @@ def load_pack(name: str) -> ExamplePack:
             else:
                 inp = rec.get("input", "")
                 out = rec.get("output", "")
-            meta = {k: v for k, v in rec.items() if k not in {"id", "question", "answer", "text", "label", "input", "output"}}
+            meta = {k: v for k, v in rec.items() if k not in _EXCLUDED_KEYS}
             examples.append(Example(str(rec.get("id")), inp, out, meta))
     return ExamplePack(name=name, metrics=pack_info.get("metrics", []), examples=examples)
