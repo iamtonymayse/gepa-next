@@ -3,10 +3,10 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Iterable, Tuple
 
 from .engine import get_judge_provider, get_provider_from_env
-from ..settings import get_settings
+from ..settings import get_settings, Settings
 from .judge_prompts import PAIRWISE_TEMPLATE
 
 
@@ -146,3 +146,36 @@ async def judge_pair(task: str, a: str, b: str, store=None) -> Dict[str, Any]:
 async def judge_score(prompt: str, candidate: str, examples: List[dict] | None, objectives: List[str] | None) -> float:
     res = await judge_scores(prompt, candidate, examples, objectives)
     return float(sum(res.get("scores", {}).values()))
+
+
+# ---------------------------------------------------------------------------
+# Lightweight judge interface for tests and simple usage
+
+
+class JudgeStub:
+    """Deterministic, offline judge for tests and local development."""
+
+    async def score(
+        self, *, prompt: str, proposal: str, rubric: str | None = None
+    ) -> float:
+        toks = proposal.lower().split()
+        uniq = len(set(toks))
+        return max(0.0, 100.0 - len(proposal)) + uniq
+
+    async def rank(
+        self, *, prompt: str, proposals: Iterable[str], rubric: str | None = None
+    ) -> List[Tuple[str, float]]:
+        items = [
+            (p, await self.score(prompt=prompt, proposal=p, rubric=rubric))
+            for p in proposals
+        ]
+        items.sort(key=lambda t: t[1], reverse=True)
+        return items
+
+
+def get_judge(settings: Settings | None = None):
+    s = settings or get_settings()
+    if s.USE_JUDGE_STUB or s.JUDGE_PROVIDER == "stub":
+        return JudgeStub()
+    # Fallback to stub if no external judge configured
+    return JudgeStub()
