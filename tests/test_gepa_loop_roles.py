@@ -18,7 +18,12 @@ def test_gepa_loop_roles_and_lessons_sse(monkeypatch):
         resp = client.post(
             "/optimize",
             headers={"Authorization": "Bearer token"},
-            json={"mode": "gepa", "prompt": "Write a greeting", "dataset": {"name": "toy_qa"}, "budget": {"max_generations": 1}},
+            json={
+                "mode": "gepa",
+                "prompt": "Write a greeting",
+                "dataset": {"name": "toy_qa"},
+                "budget": {"max_generations": 1},
+            },
         )
         job_id = resp.json()["job_id"]
         events = []

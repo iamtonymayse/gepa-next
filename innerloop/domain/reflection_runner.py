@@ -25,7 +25,8 @@ ROLE_TEMPLATES = {
     "planner": (
         "[ROLE] Planner\n"
         "[TASK] Propose a short edit plan (≤3 edits) to strengthen the prompt.\n"
-        "[CONSTRAINTS] Use operator names if possible: reorder_sections, trim_examples, swap_examples, toggle_chain_of_thought.\n"
+        "[CONSTRAINTS] Use operator names if possible: "
+        "reorder_sections, trim_examples, swap_examples, toggle_chain_of_thought.\n"
         "Prompt:\n{base}\n\nExamples:\n{examples}\n"
         "[OUTPUT] JSON list of edit ops with optional args."
     ),
