@@ -15,6 +15,4 @@ def test_metrics_text_endpoint(monkeypatch):
         body = resp.text
         assert len(body) > 0
         # Heuristic: Prometheus format often includes HELP/TYPE or metric name
-        assert any(
-            token in body.lower() for token in ["help", "type", "requests_total", "judge_stub_used"]
-        )
+        assert any(token in body.lower() for token in ["help", "type", "requests_total", "judge_stub_used"])

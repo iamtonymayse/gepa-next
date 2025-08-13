@@ -116,9 +116,7 @@ class GepaClient:
         resp = await self._client.delete(f"/v1/optimize/{job_id}", headers=self._headers())
         resp.raise_for_status()
 
-    async def stream(
-        self, job_id: str, last_event_id: int | None = None
-    ) -> AsyncIterator[SSEEnvelope]:
+    async def stream(self, job_id: str, last_event_id: int | None = None) -> AsyncIterator[SSEEnvelope]:
         backoff = 0.1
         last_id = last_event_id or self._last_ids.get(job_id, 0)
         headers = self._headers({"Last-Event-ID": str(last_id)} if last_id else None)

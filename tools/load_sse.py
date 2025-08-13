@@ -18,9 +18,7 @@ logging.basicConfig(level=logging.INFO)
 async def run_client(base_url: str, iterations: int, stats: List[float]) -> None:
     async with httpx.AsyncClient(base_url=base_url) as client:
         start = time.perf_counter()
-        r = await client.post(
-            "/v1/optimize", json={"prompt": "hi"}, params={"iterations": iterations}
-        )
+        r = await client.post("/v1/optimize", json={"prompt": "hi"}, params={"iterations": iterations})
         job_id = r.json()["job_id"]
         async with client.stream("GET", f"/v1/optimize/{job_id}/events") as resp:
             async for line in resp.aiter_lines():

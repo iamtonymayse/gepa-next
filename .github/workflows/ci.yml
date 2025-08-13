@@ -118,7 +118,14 @@ jobs:
         working-directory: ${{ env.PROJ_DIR }}
 
       - name: Pre-commit (no-autofix)
-        run: pre-commit run --all-files
+        run: |
+          base_ref="${{ github.event.pull_request.base.sha || github.event.before }}"
+          changed=$(git diff --name-only --diff-filter=ACMRTUXB "$base_ref"...HEAD | tr '\n' ' ')
+          if [ -n "$changed" ]; then
+            pre-commit run --files $changed
+          else
+            echo "No files changed for pre-commit"
+          fi
 
 
       - name: pip-audit (dependencies)
