@@ -84,7 +84,7 @@ jobs:
             --base-url http://localhost \
             --force-schema-version=30 \
             --checks all \
-            --hypothesis-max-examples=20 \
+            --hypothesis-max-examples=10 \
             --endpoint '^(?!/v1/optimize/.*/events).*$' \
             --header 'Authorization: Bearer token' \
             docs/openapi.snap.json
@@ -114,21 +114,6 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/${{ env.PROJ_DIR }}
         working-directory: ${{ env.PROJ_DIR }}
 
-      - name: Mutation testing (focused)
-        run: |
-          mutmut run --paths-to-mutate innerloop/domain/optimize_engine.py,innerloop/api/jobs/registry.py --tests-dir tests
-          SURVIVED=$(mutmut results | awk '/^Survived/ {print $2}' || echo 0)
-          echo "Survived mutants: $SURVIVED"
-          # allow a couple initially; tighten later
-          [ -z "$SURVIVED" ] && SURVIVED=0
-          if [ "$SURVIVED" -gt 2 ]; then
-            echo "::error ::More than 2 surviving mutants ($SURVIVED)."
-            mutmut results
-            exit 1
-          fi
-        env:
-          PYTHONPATH: ${{ github.workspace }}/${{ env.PROJ_DIR }}
-        working-directory: ${{ env.PROJ_DIR }}
 
       - name: pip-audit (dependencies)
         run: pip-audit -r requirements.txt

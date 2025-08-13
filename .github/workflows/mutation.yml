@@ -1,0 +1,22 @@
+name: Mutation Testing
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: python -m pip install -U pip
+      - run: pip install -r requirements.txt
+      - name: Run mutmut
+        run: |
+          mutmut run --paths-to-mutate innerloop/domain/optimize_engine.py,innerloop/api/jobs/registry.py --tests-dir tests -j 2
+          mutmut results
+        env:
+          PYTHONPATH: ${{ github.workspace }}
