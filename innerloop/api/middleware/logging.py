@@ -69,4 +69,4 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 )
             except Exception:
                 # never let metrics break requests
-                pass
+                self.logger.exception("metrics_record_failed")
