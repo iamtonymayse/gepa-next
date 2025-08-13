@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 from typing import Dict, List
 
 from ..settings import get_settings
-from .engine import get_target_provider
+from .engine import get_provider_from_env
 
 
 async def run_reflection(
@@ -20,38 +19,13 @@ async def run_reflection(
 ) -> Dict[str, object]:
     settings = get_settings()
     if settings.USE_MODEL_STUB:
-        await asyncio.sleep(0.01)
-        parts = [prompt, str(iteration)]
-        for ex in (examples or [])[:2]:
-            hashed = hashlib.sha256(ex.get("input", "").encode()).hexdigest()[:8]
-            parts.append(hashed)
-        proposal = " | ".join(parts)
+        # Determinism reduces timing jitter for perf tests
+        if not bool(settings.GEPA_DETERMINISTIC):
+            await asyncio.sleep(0.01)
+        proposal = f"proposal {iteration}"
     else:
-        provider = get_target_provider(settings)
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    f"You are GEPA reflection role = {mode}. "
-                    "Optimize proposal with constraints and lessons. Output only the proposal text."
-                ),
-            }
-        ]
-        if examples:
-            for ex in examples[:2]:
-                inp = ex.get("input", "")
-                exp = ex.get("expected")
-                messages.append({"role": "user", "content": inp})
-                if exp:
-                    messages.append({"role": "assistant", "content": exp})
-        messages.append({"role": "user", "content": prompt})
-        proposal = await provider.complete(
-            prompt,
-            messages=messages,
-            model=target_model or settings.TARGET_DEFAULT_MODEL_ID,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        provider = get_provider_from_env(settings)
+        proposal = await provider.complete(prompt)
     lessons = [f"lesson {iteration}"]
     edits = [{"op": "reorder_sections", "args": {}, "seed": iteration}]
     return {

@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     MAX_EXAMPLES_PER_JOB: int = 16
     MAX_MUTATIONS_PER_ROUND: int = 4
     DETERMINISTIC_SEED: int = 13
+    # Determinism & performance budgets
+    GEPA_DETERMINISTIC: bool = False
+    PERF_BUDGET_P95_JOB_MS: int = 800
+    PERF_BUDGET_P95_EVENT_MS: int = 120
     MAX_WALL_TIME_S: float = 15.0
     JOB_STORE: Literal["memory", "sqlite"] = "memory"
     SQLITE_PATH: str = "gepa.db"
