@@ -76,12 +76,63 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
                 },
             },
         )
-        refl: Dict[str, Any] = await run_reflection(
-            "", "gepa", gen, examples=None
+        # === Multi-role reflection sequence ===
+        await emit(job, "reflection_started", {"gen": gen})
+
+        # Build a plain dict view of examples for prompts
+        ex_dicts = [
+            {"input": ex.input, "expected": ex.output, **ex.meta} for ex in pack.examples
+        ]
+        base_text = "\n".join(best.sections)
+
+        # Author drafts an improved prompt
+        author = await run_reflection(
+            base_text,
+            "author",
+            gen,
+            examples=ex_dicts,
+            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
         )
-        lessons = update_lessons_journal(lessons, cast(List[str], refl.get("lessons", [])))
+
+        # Reviewer critiques the draft
+        reviewer = await run_reflection(
+            author.get("proposal") or base_text,
+            "reviewer",
+            gen,
+            examples=ex_dicts,
+            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+        )
+
+        # Planner suggests concrete edits (we still keep edits in stub form)
+        planner = await run_reflection(
+            base_text,
+            "planner",
+            gen,
+            examples=ex_dicts,
+            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+        )
+
+        # Reviser applies the plan and produces final revised prompt; also returns edits
+        revision = await run_reflection(
+            base_text,
+            "revision",
+            gen,
+            examples=ex_dicts,
+            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+        )
+
+        # Merge lessons and stream update
+        new_lessons: List[str] = []
+        for r in (author, reviewer, planner, revision):
+            new_lessons.extend(cast(List[str], r.get("lessons", [])))
+        lessons = update_lessons_journal(lessons, new_lessons)
         await emit(job, "lessons_updated", {"count": len(lessons), "sample": lessons[:3]})
-        edited = apply_edits(best, cast(Sequence[Dict[str, Any]], refl.get("edits", [])))
+
+        # Apply revision edits to the best candidate to form next population seed
+        edited = apply_edits(best, cast(Sequence[Dict[str, Any]], revision.get("edits", [])))
+
+        await emit(job, "reflection_finished", {"gen": gen})
+
         rng = random.Random(gen)  # nosec B311
         mutated = OPERATORS["reorder_sections"](edited, rng=rng)
         population = [mutated]
@@ -100,4 +151,5 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
         "frontier": [
             {"id": c.id, "score": c.meta.get("score", 0.0)} for c in frontier
         ],
+        "lessons": lessons,
     }
