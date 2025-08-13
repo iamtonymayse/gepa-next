@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, sys, json, httpx, anyio
+
+import argparse
+import json
+import sys
+
+import anyio
+import httpx
 
 async def main():
     ap = argparse.ArgumentParser()
