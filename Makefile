@@ -4,7 +4,7 @@ run:
 	uvicorn innerloop.main:app --reload
 
 lint:
-	ruff .
+	ruff check .
 
 typecheck:
 	mypy .

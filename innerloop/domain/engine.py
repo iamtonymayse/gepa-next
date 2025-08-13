@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+from contextlib import suppress
 from typing import Optional, Protocol
 
 from ..settings import Settings, get_settings
@@ -42,10 +43,8 @@ class OpenRouterProvider:
             return "unavailable"
 
     async def aclose(self) -> None:
-        try:
+        with suppress(Exception):
             await self.client.aclose()
-        except Exception:
-            pass
 
 
 _provider_singleton: OpenRouterProvider | None = None

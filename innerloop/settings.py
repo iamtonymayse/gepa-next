@@ -45,10 +45,10 @@ class Settings(BaseSettings):
             if s.startswith("[") and s.endswith("]"):
                 try:
                     parsed = json.loads(s)
-                    if isinstance(parsed, list):
-                        return [str(x).strip() for x in parsed]
-                except Exception:
-                    pass
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    parsed = None
+                if isinstance(parsed, list):
+                    return [str(x).strip() for x in parsed]
             return [item.strip() for item in s.split(",") if item.strip()]
         if isinstance(v, list):
             return v
