@@ -36,9 +36,10 @@ class Settings(BaseSettings):
     SERVICE_ENV: str = "dev"
     IDEMPOTENCY_TTL_S: float = 600.0
     USE_MODEL_STUB: bool = True
+    USE_JUDGE_STUB: bool = True
     MODEL_ID: str = "gpt-4o-mini"
     TARGET_DEFAULT_MODEL_ID: str = "gpt-4o-mini"
-    JUDGE_PROVIDER: Literal["openrouter", "openai"] = "openrouter"
+    JUDGE_PROVIDER: Literal["openrouter", "openai", "stub"] = "openrouter"
     JUDGE_MODEL_ID: str = "openai:gpt-5-judge"  # fixed judge, not API-settable
     JUDGE_TIMEOUT_S: float = 15.0
     JUDGE_CACHE_SIZE: int = 2048

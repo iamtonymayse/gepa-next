@@ -4,8 +4,7 @@ from typing import Any, Dict, List, Literal
 
 from uuid import uuid4
 from enum import Enum
-from pydantic import BaseModel, Field, field_validator
-from pydantic import ValidationInfo
+from pydantic import BaseModel, Field, field_validator, AliasChoices
 
 
 class DatasetSpec(BaseModel):
@@ -65,8 +64,10 @@ class OptimizeRequest(BaseModel):
     examples: List[ExampleIn] | None = None
     objectives: List[str] | None = None
     seed: int | None = None
-    target_model_id: str | None = None
-    model_id: str | None = None
+    target_model_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("target_model", "target_model_id", "model_id"),
+    )
     temperature: float | None = None
     max_tokens: int | None = None
     tournament_size: int | None = None
@@ -90,12 +91,6 @@ class OptimizeRequest(BaseModel):
             data["id"] = str(ex_id) if ex_id is not None else str(uuid4())
             normalized.append(data)
         return normalized
-
-    @field_validator("target_model_id")
-    @classmethod
-    def _alias_model_id(cls, v, info: ValidationInfo):
-        data = info.data
-        return v or data.get("model_id")
 
     model_config = {
         "extra": "forbid",
