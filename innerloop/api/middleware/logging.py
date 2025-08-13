@@ -1,13 +1,25 @@
 from __future__ import annotations
 
 import logging
+import re
+import sys
 import time
 import uuid
-import re
 from typing import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from ...settings import get_settings
+
+settings = get_settings()
+logger = logging.getLogger("gepa")
+level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+logger.setLevel(level)
+if settings.DEBUG_LOG_CONSOLE and not logger.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(level)
+    logger.addHandler(handler)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -15,7 +27,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app) -> None:
         super().__init__(app)
-        self.logger = logging.getLogger("gepa")
+        self.logger = logger
         # redact any header key matching these patterns (case-insensitive)
         self._redact_key_re = re.compile(r"(authorization|api[-_]?key|token)", re.IGNORECASE)
 

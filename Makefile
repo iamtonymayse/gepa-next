@@ -1,7 +1,10 @@
-.PHONY: run lint typecheck test qa docker-build docker-run taste taste-fast
+.PHONY: setup run lint typecheck test fmt qa docker-build docker-run taste taste-fast
+
+setup:
+	python -m venv .venv && . .venv/bin/activate && pip install -e .[dev]
 
 run:
-	uvicorn innerloop.main:app --reload
+	uvicorn innerloop.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload
 
 lint:
 	ruff check .
@@ -11,6 +14,9 @@ typecheck:
 
 test:
 	python -m pytest -q
+
+fmt:
+	black . && ruff --fix .
 
 qa: lint typecheck test
 

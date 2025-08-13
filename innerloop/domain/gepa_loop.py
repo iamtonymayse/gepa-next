@@ -11,8 +11,8 @@ from .eval import evaluate_batch
 from .examples import load_pack
 from .operators import OPERATORS
 from .optimize_engine import pareto_filter
-from .reflection_runner import run_reflection
 from .reflection_multirole import update_lessons_journal
+from .reflection_runner import run_reflection
 
 
 @dataclass
@@ -30,9 +30,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
     budget = Budget(**cast(Dict[str, Any], payload.get("budget", {})))
     max_gens = budget.max_generations or 1
     prompt = str(payload.get("prompt", ""))
-    population: List[Candidate] = [
-        Candidate(id="seed", sections=[prompt], examples_subset=None, meta={})
-    ]
+    population: List[Candidate] = [Candidate(id="seed", sections=[prompt], examples_subset=None, meta={})]
     lessons: List[str] = []
     frontier: List[Candidate] = []
     rollouts = 0
@@ -80,9 +78,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
         await emit(job, "reflection_started", {"gen": gen})
 
         # Build a plain dict view of examples for prompts
-        ex_dicts = [
-            {"input": ex.input, "expected": ex.output, **ex.meta} for ex in pack.examples
-        ]
+        ex_dicts = [{"input": ex.input, "expected": ex.output, **ex.meta} for ex in pack.examples]
         base_text = "\n".join(best.sections)
 
         # Author drafts an improved prompt
@@ -91,7 +87,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
             "author",
             gen,
             examples=ex_dicts,
-            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+            target_model=payload.get("target_model") or settings.TARGET_MODEL_DEFAULT,
         )
 
         # Reviewer critiques the draft
@@ -100,7 +96,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
             "reviewer",
             gen,
             examples=ex_dicts,
-            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+            target_model=payload.get("target_model") or settings.TARGET_MODEL_DEFAULT,
         )
 
         # Planner suggests concrete edits (we still keep edits in stub form)
@@ -109,7 +105,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
             "planner",
             gen,
             examples=ex_dicts,
-            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+            target_model=payload.get("target_model") or settings.TARGET_MODEL_DEFAULT,
         )
 
         # Reviser applies the plan and produces final revised prompt; also returns edits
@@ -118,7 +114,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
             "revision",
             gen,
             examples=ex_dicts,
-            target_model=payload.get("target_model") or settings.TARGET_DEFAULT_MODEL,
+            target_model=payload.get("target_model") or settings.TARGET_MODEL_DEFAULT,
         )
 
         # Merge lessons and stream update
@@ -147,9 +143,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
         if stagnation >= 2:
             break
     return {
-        "best_prompt": "\n".join(frontier[0].sections) if frontier else payload.get("prompt", ""),
-        "frontier": [
-            {"id": c.id, "score": c.meta.get("score", 0.0)} for c in frontier
-        ],
+        "best_prompt": ("\n".join(frontier[0].sections) if frontier else payload.get("prompt", "")),
+        "frontier": [{"id": c.id, "score": c.meta.get("score", 0.0)} for c in frontier],
         "lessons": lessons,
     }

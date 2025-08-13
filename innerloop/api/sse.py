@@ -16,7 +16,7 @@ except Exception:  # pragma: no cover
 
 
 # Terminal event names used across routers and clients.
-# Keep this list stable; tests rely on it.
+# Keep this set stable; tests rely on it.
 SSE_TERMINALS = {"finished", "failed", "cancelled"}
 
 

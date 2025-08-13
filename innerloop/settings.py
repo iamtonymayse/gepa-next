@@ -19,9 +19,11 @@ class Settings(BaseSettings):
     SSE_RETRY_MS: int = 1500
     SSE_PING_INTERVAL_S: float = 1.0
     SSE_BACKPRESSURE_FAIL_TIMEOUT_S: float = 2.0
-    # Max number of SSE events buffered per job before producers apply backpressure.
-    SSE_BUFFER_SIZE: int = 256
-    MAX_ITERATIONS: int = 10
+    SSE_BUFFER_SIZE: int = 200
+    MAX_ITERATIONS: int = 4
+    # Logging
+    LOG_LEVEL: str = "INFO"  # DEBUG|INFO|WARNING|ERROR
+    DEBUG_LOG_CONSOLE: bool = False  # if true, always log to console/stdout
     MAX_REQUEST_BYTES: int = 64_000
     RATE_LIMIT_PER_MIN: int = 60
     RATE_LIMIT_BURST: int = 30
@@ -38,7 +40,6 @@ class Settings(BaseSettings):
     USE_MODEL_STUB: bool = True
     USE_JUDGE_STUB: bool = True
     MODEL_ID: str = "gpt-4o-mini"
-    TARGET_DEFAULT_MODEL_ID: str = "gpt-4o-mini"
     JUDGE_PROVIDER: Literal["openrouter", "openai", "stub"] = "openrouter"
     JUDGE_MODEL_ID: str = "openai:gpt-5-judge"  # fixed judge, not API-settable
     JUDGE_TIMEOUT_S: float = 15.0
@@ -52,7 +53,8 @@ class Settings(BaseSettings):
     EARLY_STOP_PATIENCE: int = 3
     RETRIEVAL_MAX_EXAMPLES: int = 4
     RETRIEVAL_MIN_LEN: int = 8
-    TARGET_MODEL_DEFAULT: str = "openrouter/gpt-4o-mini"
+    # Single source of truth for default target model (overrideable per API call)
+    TARGET_MODEL_DEFAULT: str = "openai:gpt-4o-mini"
     MAX_CANDIDATES: int = 8
     MAX_EXAMPLES_PER_JOB: int = 16
     MAX_MUTATIONS_PER_ROUND: int = 4
@@ -64,7 +66,6 @@ class Settings(BaseSettings):
     MAX_WALL_TIME_S: float = 15.0
     JOB_STORE: Literal["memory", "sqlite"] = "memory"
     SQLITE_PATH: str = "gepa.db"
-    TARGET_DEFAULT_MODEL: str = "openai:gpt-4o-mini"  # default target; API may override
     COST_TRACKING_ENABLED: bool = True
     MODEL_PRICES_JSON: str = (
         '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
