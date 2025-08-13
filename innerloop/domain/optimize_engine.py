@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Callable, List, Sequence, TypeVar
 
-from .judge import judge_pair
+from .judge import judge_pair, get_judge
+from ..settings import get_settings
 from .recombination import recombine
 
 T = TypeVar("T")
@@ -85,4 +86,34 @@ async def rank_candidates(
     return top[:n]
 
 
-__all__ = ["pareto_filter", "tournament_rank", "rank_candidates", "recombine"]
+async def pareto_v2(
+    *,
+    prompt: str,
+    proposals: Sequence[T],
+    n: int = 1,
+    rubric: str | None = None,
+) -> List[T]:
+    """Judge-driven selection using configured judge with fallback."""
+    if not proposals:
+        return []
+    try:
+        judge = get_judge(get_settings())
+        ranked = await judge.rank(
+            prompt=prompt,
+            proposals=[str(p) for p in proposals],
+            rubric=rubric,
+        )
+        ordered = [p for p, _ in ranked]
+        mapping = {str(p): p for p in proposals}
+        return [mapping[o] for o in ordered[:n] if o in mapping]
+    except Exception:
+        return pareto_filter(proposals, n=n)
+
+
+__all__ = [
+    "pareto_filter",
+    "tournament_rank",
+    "rank_candidates",
+    "recombine",
+    "pareto_v2",
+]

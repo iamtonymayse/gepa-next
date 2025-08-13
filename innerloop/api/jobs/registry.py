@@ -11,7 +11,7 @@ from ...domain.gepa_loop import gepa_loop
 from ...domain.judge import judge_scores
 from ...domain.mutations import mutate_prompt
 from ...domain.recombination import recombine
-from ...domain.optimize_engine import pareto_filter, tournament_rank
+from ...domain.optimize_engine import pareto_filter, tournament_rank, pareto_v2
 from ...domain.retrieval import retrieve
 from ...domain.eval_runner import run_eval
 from ...settings import get_settings
@@ -190,6 +190,10 @@ class JobRegistry:
                 or payload.get("target_model_id")
                 or settings.TARGET_MODEL_DEFAULT
             )
+            rubric = (
+                payload.get("evaluation_rubric")
+                or settings.EVALUATION_RUBRIC_DEFAULT
+            )
             examples = payload.get("examples") or []
             objective_names: List[str] = payload.get("objectives") or ["brevity", "diversity", "coverage"]
             recombination_rate = (
@@ -229,12 +233,22 @@ class JobRegistry:
                 recombos = recombine(prev_pool, recombination_rate, seed + i)
                 candidates = [base] + mutants + recombos
                 await self._emit(job, "mutation", {"count": len(mutants)})
-                front = pareto_filter(candidates, n=settings.MAX_CANDIDATES, objectives=objectives)
-                m = min(tournament_size * 2, len(front))
-                if m > 1:
-                    ranked = await tournament_rank(front[:m], task, tournament_size)
+                front = pareto_filter(
+                    candidates, n=settings.MAX_CANDIDATES, objectives=objectives
+                )
+                if settings.ENABLE_PARETO_V2:
+                    ranked = await pareto_v2(
+                        prompt=task,
+                        proposals=front,
+                        n=settings.PARETO_TOPN,
+                        rubric=rubric,
+                    )
                 else:
-                    ranked = front
+                    m = min(tournament_size * 2, len(front))
+                    if m > 1:
+                        ranked = await tournament_rank(front[:m], task, tournament_size)
+                    else:
+                        ranked = front
                 chosen = ranked[0] if ranked else base
                 det_scores = scores_for(chosen) if objective_names else {}
                 judge = await judge_scores(task, chosen, examples, objective_names)
@@ -242,6 +256,7 @@ class JobRegistry:
                     "iteration": i + 1,
                     "proposal": chosen,
                     "target_model": target_model,
+                    "rubric": rubric,
                     "scores": {**det_scores, "judge": judge["scores"]},
                 }
                 await self._emit(job, "progress", progress)
@@ -277,6 +292,7 @@ class JobRegistry:
                 "lessons": [],
                 "scores": result_scores,
                 "target_model": target_model,
+                "rubric": rubric,
             }
             job.status = JobStatus.FINISHED
             await self._emit(job, "finished", job.result)
