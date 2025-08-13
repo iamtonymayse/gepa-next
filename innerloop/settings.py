@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     SSE_PING_INTERVAL_S: float = 1.0
     SSE_BACKPRESSURE_FAIL_TIMEOUT_S: float = 2.0
     SSE_BUFFER_SIZE: int = 200
-    MAX_ITERATIONS: int = 10
+    MAX_ITERATIONS: int = 4
+    # Logging
+    LOG_LEVEL: str = "INFO"  # DEBUG|INFO|WARNING|ERROR
+    DEBUG_LOG_CONSOLE: bool = False  # if true, always log to console/stdout
     MAX_REQUEST_BYTES: int = 64_000
     RATE_LIMIT_PER_MIN: int = 60
     RATE_LIMIT_BURST: int = 30

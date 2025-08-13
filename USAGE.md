@@ -2,6 +2,8 @@ GEPA-NEXT — Developer Usage Guide (v1)
 
 Guided Evolutionary Prompt Architect (GEPA) — a small FastAPI service that runs optimize jobs and streams live progress via Server-Sent Events (SSE). This guide shows what the API is for, how to use it confidently, and the exact wire protocol you can rely on.
 
+For setup see `docs/QUICKSTART.md`. For SSE usage see `docs/SSE.md`.
+
 ⸻
 
 TL;DR (golden path)
