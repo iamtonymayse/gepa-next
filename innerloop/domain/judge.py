@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Iterable, Tuple
 from .engine import get_judge_provider, get_provider_from_env
 from ..settings import get_settings, Settings
 from .judge_prompts import PAIRWISE_TEMPLATE
+from ..api.metrics import inc
 
 
 def _build_judge_prompt(
@@ -173,9 +174,49 @@ class JudgeStub:
         return items
 
 
+class JudgeLLM:
+    """
+    Minimal async adapter around provider-backed judge calls.
+
+    - ``score`` uses ``judge_scores`` and sums objective scores into a scalar.
+    - ``rank`` scores each proposal independently and sorts results descending.
+
+    This keeps network use centralized and avoids changing optimize_engine APIs.
+    """
+
+    def __init__(self, settings: Settings | None = None):
+        self._settings = settings or get_settings()
+
+        # Constructing the provider is side-effect free; we won't call it in stubbed CI.
+        self._provider = get_judge_provider(self._settings)
+
+    async def score(
+        self, *, prompt: str, proposal: str, rubric: str | None = None
+    ) -> float:
+        # We don't have explicit objective names here; use the built-in defaults path.
+        data = await judge_scores(prompt, proposal, examples=None, objectives=None)
+        return float(sum(data.get("scores", {}).values()))
+
+    async def rank(
+        self, *, prompt: str, proposals: Iterable[str], rubric: str | None = None
+    ) -> List[Tuple[str, float]]:
+        scored: List[Tuple[str, float]] = []
+        for p in proposals:
+            val = await self.score(prompt=prompt, proposal=str(p), rubric=rubric)
+            scored.append((str(p), float(val)))
+        scored.sort(key=lambda t: t[1], reverse=True)
+        return scored
+
+
 def get_judge(settings: Settings | None = None):
     s = settings or get_settings()
     if s.USE_JUDGE_STUB or s.JUDGE_PROVIDER == "stub":
+        # Visible in metrics so ops can spot accidental stub usage in prod.
+        try:
+            inc("judge_stub_used", 1)
+        except Exception:
+            pass
         return JudgeStub()
-    # Fallback to stub if no external judge configured
-    return JudgeStub()
+
+    # Real judge path: use provider-backed adapter
+    return JudgeLLM(s)
