@@ -15,7 +15,6 @@ def test_authorization_header_redacted(monkeypatch, caplog):
     import innerloop.main as main  # type: ignore
 
     importlib.reload(main)
-    logger = logging.getLogger("gepa")
     with caplog.at_level(logging.INFO, logger="gepa"):
         with TestClient(main.app) as client:
             client.post(
