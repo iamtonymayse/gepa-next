@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from typing import List, Sequence
+from typing import Any, List, Mapping, Sequence
 
 
 @dataclass
 class Candidate:
     id: str
     sections: List[str]
-    examples_subset: Sequence[int] | None = None
+    examples_subset: List[int] | None = None
     meta: dict = field(default_factory=dict)
 
-
-def apply_edits(candidate: Candidate, edits: Sequence[dict]) -> Candidate:
+def apply_edits(candidate: Candidate, edits: Sequence[Mapping[str, Any]]) -> Candidate:
     from .operators import OPERATORS
 
     new = Candidate(
@@ -23,9 +22,11 @@ def apply_edits(candidate: Candidate, edits: Sequence[dict]) -> Candidate:
         dict(candidate.meta),
     )
     for edit in edits:
-        op_name = edit.get("op")
+        op_name = str(edit.get("op", ""))
+        if not op_name:
+            continue
         args = edit.get("args", {})
-        seed = edit.get("seed", 0)
+        seed = int(edit.get("seed", 0))
         op = OPERATORS.get(op_name)
         if not op:
             continue

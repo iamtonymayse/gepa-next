@@ -32,7 +32,7 @@ def toggle_chain_of_thought(candidate: Candidate, rng: random.Random) -> Candida
 
 def swap_examples(candidate: Candidate, rng: random.Random) -> Candidate:
     new = Candidate(candidate.id, list(candidate.sections), list(candidate.examples_subset or []), dict(candidate.meta))
-    if len(new.examples_subset) >= 2:
+    if new.examples_subset is not None and len(new.examples_subset) >= 2:
         i, j = 0, 1
         new.examples_subset[i], new.examples_subset[j] = new.examples_subset[j], new.examples_subset[i]
     return new

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Any, Dict, List, Sequence, cast
 
 from ..settings import get_settings
 from .candidate import Candidate, apply_edits
@@ -22,15 +22,16 @@ class Budget:
     max_cost: float | None = None
 
 
-async def gepa_loop(job, emit, payload: Dict[str, object]) -> Dict[str, object]:
+async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
     settings = get_settings()
     provider = get_provider_from_env(settings)
-    dataset = payload.get("dataset", {"name": "toy_qa"})
-    pack = load_pack(dataset["name"])
-    budget = Budget(**payload.get("budget", {}))
+    dataset = cast(Dict[str, Any], payload.get("dataset", {"name": "toy_qa"}))
+    pack = load_pack(str(dataset.get("name", "toy_qa")))
+    budget = Budget(**cast(Dict[str, Any], payload.get("budget", {})))
     max_gens = budget.max_generations or 1
+    prompt = str(payload.get("prompt", ""))
     population: List[Candidate] = [
-        Candidate(id="seed", sections=[payload.get("prompt", "")], examples_subset=None, meta={})
+        Candidate(id="seed", sections=[prompt], examples_subset=None, meta={})
     ]
     lessons: List[str] = []
     frontier: List[Candidate] = []
@@ -75,10 +76,10 @@ async def gepa_loop(job, emit, payload: Dict[str, object]) -> Dict[str, object]:
                 },
             },
         )
-        refl = await run_reflection("", "gepa", gen, [])
-        lessons = update_lessons_journal(lessons, refl.get("lessons", []))
+        refl: Dict[str, Any] = await run_reflection("", "gepa", gen, [])
+        lessons = update_lessons_journal(lessons, cast(List[str], refl.get("lessons", [])))
         await emit(job, "lessons_updated", {"count": len(lessons), "sample": lessons[:3]})
-        edited = apply_edits(best, refl.get("edits", []))
+        edited = apply_edits(best, cast(Sequence[Dict[str, Any]], refl.get("edits", [])))
         rng = random.Random(gen)
         mutated = OPERATORS["reorder_sections"](edited, rng=rng)
         population = [mutated]
