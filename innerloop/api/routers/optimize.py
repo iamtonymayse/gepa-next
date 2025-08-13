@@ -8,8 +8,8 @@ from fastapi.responses import StreamingResponse, JSONResponse
 
 from ..jobs.registry import JobRegistry, JobStatus
 from ..models import (
-    APIError,
     ErrorCode,
+    ErrorResponse,
     JobState,
     OptimizeRequest,
     OptimizeResponse,
@@ -27,7 +27,7 @@ router = APIRouter()
     response_model=OptimizeResponse,
     summary="Create optimization job",
     description="Create an optimization job. Use optional Idempotency-Key header to dedupe submissions.",
-    responses={401: {"model": APIError}, 429: {"model": APIError}, 413: {"model": APIError}},
+    responses={401: {"model": ErrorResponse}, 429: {"model": ErrorResponse}, 413: {"model": ErrorResponse}},
 )
 async def create_optimize_job(
     request: Request,
@@ -45,7 +45,11 @@ async def create_optimize_job(
     return OptimizeResponse(job_id=job.id)
 
 
-@router.get("/optimize/{job_id}", response_model=JobState)
+@router.get(
+    "/optimize/{job_id}",
+    response_model=JobState,
+    responses={404: {"model": ErrorResponse}},
+)
 async def get_job(request: Request, job_id: str) -> JobState | JSONResponse:
     registry: JobRegistry = request.app.state.registry
     store = request.app.state.store
@@ -74,7 +78,11 @@ async def get_job(request: Request, job_id: str) -> JobState | JSONResponse:
     )
 
 
-@router.delete("/optimize/{job_id}", response_model=JobState)
+@router.delete(
+    "/optimize/{job_id}",
+    response_model=JobState,
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+)
 async def cancel_job_endpoint(request: Request, job_id: str):
     registry: JobRegistry = request.app.state.registry
     job = registry.jobs.get(job_id)
@@ -105,6 +113,10 @@ async def cancel_job_endpoint(request: Request, job_id: str):
     response_class=StreamingResponse,
     summary="Stream job events",
     description="Server-Sent Events stream. Use Last-Event-ID header to resume from a specific event id.",
+    responses={
+        200: {"content": {"text/event-stream": {}}},
+        404: {"model": ErrorResponse},
+    },
 )
 async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
     registry: JobRegistry = request.app.state.registry

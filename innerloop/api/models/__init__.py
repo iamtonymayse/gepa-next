@@ -10,7 +10,7 @@ from .schemas import (
     EvalStartRequest,
     ObjectiveSpec,
 )
-from .errors import APIError, ErrorCode, error_response
+from .errors import APIError, ErrorCode, ErrorResponse, error_response
 
 __all__ = [
     "OptimizeRequest",
@@ -23,5 +23,6 @@ __all__ = [
     "ObjectiveSpec",
     "APIError",
     "ErrorCode",
+    "ErrorResponse",
     "error_response",
 ]

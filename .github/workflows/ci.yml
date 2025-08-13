@@ -12,6 +12,8 @@ jobs:
         python-version: ['3.11']
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -37,14 +39,7 @@ jobs:
       - run: python -m pip install -U pip
       - name: Install deps
         run: |
-          # core deps + sqlite persistence
-          pip install \
-            "fastapi>=0.111" "uvicorn>=0.30" \
-            "pydantic>=2.7" "pydantic-settings>=2.3" \
-            "httpx>=0.27" "pytest>=8.2" "pytest-timeout>=2.3.1" \
-            "pytest-cov>=5.0" "aiosqlite>=0.20" \
-            "ruff>=0.5.0" "mypy>=1.10" \
-            "bandit>=1.7" "radon>=6.0"
+          pip install -r "$PROJ_DIR/requirements.txt"
 
       - name: Install Python client
         run: pip install -e clients/python
@@ -77,6 +72,30 @@ jobs:
             echo "innerloop/ not found under $PROJ_DIR; skipping mypy"
           fi
 
+      - name: OpenAPI snapshot check (non-destructive on first run)
+        run: |
+          python tools/snapshot_openapi.py || (echo "::error ::OpenAPI drift detected. Run tools/snapshot_openapi.py --update locally and commit the snapshot." && exit 1)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/${{ env.PROJ_DIR }}
+        working-directory: ${{ env.PROJ_DIR }}
+
+      - name: Schemathesis fuzz (exclude SSE stream endpoint)
+        run: |
+          schemathesis run \
+            --app innerloop.main:app \
+            --base-url http://localhost \
+            --force-schema-version=30 \
+            --checks all \
+            --hypothesis-max-examples=10 \
+            --endpoint '^(?!/v1/optimize/.*/events).*$' \
+            --header 'Authorization: Bearer token' \
+            docs/openapi.snap.json
+        env:
+          PYTHONPATH: ${{ github.workspace }}/${{ env.PROJ_DIR }}
+          OPENROUTER_API_KEY: dev
+          API_BEARER_TOKENS: '["token"]'
+        working-directory: ${{ env.PROJ_DIR }}
+
       - name: Security scan
         run: bandit -r "$PROJ_DIR" -x "$PROJ_DIR/tests" -q
 
@@ -97,6 +116,29 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/${{ env.PROJ_DIR }}
         working-directory: ${{ env.PROJ_DIR }}
 
+
+      - name: pip-audit (dependencies)
+        run: pip-audit -r requirements.txt
+
+      - name: Generate SBOM (CycloneDX)
+        run: cyclonedx-py requirements -o sbom.json
+        working-directory: ${{ env.PROJ_DIR }}
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Upload examples
         uses: actions/upload-artifact@v4
         with:
@@ -104,3 +146,11 @@ jobs:
           path: |
             examples/
             docs/postman/
+
+      - name: Upload QA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-artifacts
+          path: |
+            ${{ env.PROJ_DIR }}/docs/openapi.snap.json
+            ${{ env.PROJ_DIR }}/sbom.json

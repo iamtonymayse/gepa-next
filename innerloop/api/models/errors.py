@@ -24,6 +24,10 @@ class APIError(BaseModel):
     details: Dict[str, Any] = {}
 
 
+class ErrorResponse(BaseModel):
+    error: APIError
+
+
 def error_response(
     code: ErrorCode,
     message: str,
