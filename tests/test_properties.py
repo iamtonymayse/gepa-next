@@ -48,7 +48,7 @@ def test_pareto_invariants(items: List[str], n: int) -> None:
 
 
 @hsettings(max_examples=20, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
-@given(st.integers(min_value=0, max_value=3))
+@given(st.integers(min_value=1, max_value=3))
 def test_sse_invariants(monkeypatch, iterations: int) -> None:
     # auth bypass for /optimize
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")

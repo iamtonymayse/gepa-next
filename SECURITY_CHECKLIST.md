@@ -87,6 +87,8 @@ Mitigates burst traffic and unbounded memory growth.
 - TLS terminates at the proxy; internal app speaks HTTP.
 - SSE responses set `Cache-Control: no-store`, `Connection: keep-alive`, `X-Accel-Buffering: no`.
 - Non-SSE routes set `X-Content-Type-Options: nosniff` (consider CSP/CSRF docs for API-only service).
+- SQLite connections enable WAL and `busy_timeout=5000` to reduce lock contention.
+- Outbound OpenRouter client enforces connection limits and strict timeouts.
 
 **Why it matters**
 Protects data in transit and prevents caching or MIME sniffing issues.

@@ -18,15 +18,30 @@ class LocalEchoProvider:
 
 
 class OpenRouterProvider:
-    def __init__(self, api_key: str, *, extra_headers: Dict[str, str] | None = None, timeout: float = 5.0) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        extra_headers: Dict[str, str] | None = None,
+        timeout: float | httpx.Timeout | None = None,
+    ) -> None:
         self.api_key = api_key
-        headers = {
-            "User-Agent": "gepa-next/0.1",
-            "Authorization": f"Bearer {api_key}",
-        }
+        headers = {"User-Agent": "gepa-next/0.1", "Authorization": f"Bearer {api_key}"}
         if extra_headers:
             headers.update(extra_headers)
-        self.client = httpx.AsyncClient(timeout=timeout, headers=headers)
+        default_timeout = httpx.Timeout(connect=3.0, read=15.0, write=10.0, pool=15.0)
+        timeout_config = (
+            timeout
+            if isinstance(timeout, httpx.Timeout)
+            else httpx.Timeout(timeout) if timeout is not None
+            else default_timeout
+        )
+        self.client = httpx.AsyncClient(
+            timeout=timeout_config,
+            limits=httpx.Limits(max_connections=64, max_keepalive_connections=32),
+            headers=headers,
+            verify=True,
+        )
         self._extra_headers = extra_headers or {}
 
     async def complete(self, prompt: str, **kwargs: object) -> str:
@@ -90,6 +105,7 @@ class OpenAIProvider:
 
 _target_provider_singleton: ModelProvider | None = None
 _judge_provider_singleton: ModelProvider | None = None
+_provider_singleton: Optional["ModelProvider"] = None
 
 
 def get_target_provider(settings: Optional[Settings] = None) -> ModelProvider:
@@ -139,10 +155,14 @@ def get_judge_provider(settings: Optional[Settings] = None) -> ModelProvider:
 
 
 def get_provider_from_env(settings: Optional[Settings] = None) -> ModelProvider:
+    global _provider_singleton
     settings = settings or get_settings()
-    if settings.USE_MODEL_STUB or not settings.OPENROUTER_API_KEY:
-        return LocalEchoProvider()
-    return OpenRouterProvider(settings.OPENROUTER_API_KEY)
+    if _provider_singleton is None:
+        if not settings.USE_MODEL_STUB and settings.OPENROUTER_API_KEY:
+            _provider_singleton = OpenRouterProvider(settings.OPENROUTER_API_KEY)
+        else:
+            _provider_singleton = LocalEchoProvider()
+    return _provider_singleton
 
 
 async def close_all_providers() -> None:
@@ -153,3 +173,11 @@ async def close_all_providers() -> None:
                 await prov.aclose()  # type: ignore[func-returns-value]
     _target_provider_singleton = None
     _judge_provider_singleton = None
+
+
+async def close_provider() -> None:
+    global _provider_singleton
+    prov = _provider_singleton
+    _provider_singleton = None
+    if isinstance(prov, OpenRouterProvider):
+        await prov.aclose()

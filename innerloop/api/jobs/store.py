@@ -132,6 +132,7 @@ class SQLiteJobStore:
             raise RuntimeError("aiosqlite is required for SQLiteJobStore")
         db = await aiosqlite.connect(path)
         await db.execute("PRAGMA journal_mode=WAL")
+        await db.execute("PRAGMA busy_timeout=5000")
         await db.execute(
             """
             CREATE TABLE IF NOT EXISTS jobs (
@@ -152,6 +153,9 @@ class SQLiteJobStore:
                 PRIMARY KEY(job_id, id)
             )
             """
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_job_id_id ON events(job_id, id)"
         )
         await db.execute(
             """
