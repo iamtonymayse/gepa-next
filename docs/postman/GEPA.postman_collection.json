@@ -1,0 +1,58 @@
+{
+  "info": {
+    "name": "GEPA",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create job",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Idempotency-Key", "value": "demo", "disabled": true }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"prompt\":\"hello\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/optimize",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "optimize"]
+        }
+      }
+    },
+    {
+      "name": "Stream events",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Last-Event-ID", "value": "", "disabled": true }],
+        "url": {
+          "raw": "{{baseUrl}}/v1/optimize/:job_id/events",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "optimize", ":job_id", "events"]
+        }
+      }
+    },
+    {
+      "name": "Get state",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/v1/optimize/:job_id",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "optimize", ":job_id"]
+        }
+      }
+    },
+    {
+      "name": "Cancel job",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "{{baseUrl}}/v1/optimize/:job_id",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "optimize", ":job_id"]
+        }
+      }
+    }
+  ]
+}

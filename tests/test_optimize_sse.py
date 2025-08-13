@@ -13,7 +13,7 @@ def test_optimize_sse(monkeypatch):
     import innerloop.main as main
     importlib.reload(main)
     with TestClient(main.app) as client:
-        resp = client.post("/optimize", params={"iterations": 1})
+        resp = client.post("/optimize", json={"prompt": "hi"}, params={"iterations": 1})
         assert resp.status_code == 200
         job_id = resp.json()["job_id"]
 

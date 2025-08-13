@@ -20,7 +20,7 @@ def create_client(monkeypatch, **env):
 def test_sse_headers(monkeypatch):
     client, _ = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
     with client:
-        resp = client.post("/optimize", params={"iterations": 1})
+        resp = client.post("/optimize", json={"prompt": "hi"}, params={"iterations": 1})
         job_id = resp.json()["job_id"]
         resp = client.get(f"/optimize/{job_id}/events")
         assert resp.headers["cache-control"] == "no-store"
@@ -32,17 +32,17 @@ def test_auth_matrix(monkeypatch):
     # No auth -> 401
     client, _ = create_client(monkeypatch, API_BEARER_TOKENS='["token1"]', OPENROUTER_API_KEY=None)
     with client:
-        resp = client.post("/optimize")
+        resp = client.post("/optimize", json={"prompt": "hi"})
         assert resp.status_code == 401
     # Bearer token -> 200
     client, _ = create_client(monkeypatch, API_BEARER_TOKENS='["token1"]', OPENROUTER_API_KEY=None)
     with client:
-        resp = client.post("/optimize", headers={"Authorization": "Bearer token1"})
+        resp = client.post("/optimize", json={"prompt": "hi"}, headers={"Authorization": "Bearer token1"})
         assert resp.status_code == 200
     # Bypass via OPENROUTER_API_KEY
     client, _ = create_client(monkeypatch, OPENROUTER_API_KEY="dev", API_BEARER_TOKENS=None)
     with client:
-        resp = client.post("/optimize")
+        resp = client.post("/optimize", json={"prompt": "hi"})
         assert resp.status_code == 200
 
 
@@ -51,8 +51,8 @@ def test_token_compare(monkeypatch):
         monkeypatch, API_BEARER_TOKENS='["token1","token2"]', OPENROUTER_API_KEY=None
     )
     with client:
-        ok = client.post("/optimize", headers={"Authorization": "Bearer token1"})
-        bad = client.post("/optimize", headers={"Authorization": "Bearer nope"})
+        ok = client.post("/optimize", json={"prompt": "hi"}, headers={"Authorization": "Bearer token1"})
+        bad = client.post("/optimize", json={"prompt": "hi"}, headers={"Authorization": "Bearer nope"})
         assert ok.status_code == 200
         assert bad.status_code == 401
 
@@ -61,7 +61,7 @@ def test_token_compare(monkeypatch):
 def test_iterations_clamp(monkeypatch):
     client, settings_module = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
     with client:
-        resp = client.post("/optimize", params={"iterations": 9999})
+        resp = client.post("/optimize", json={"prompt": "hi"}, params={"iterations": 9999})
         job_id = resp.json()["job_id"]
         with client.stream("GET", f"/optimize/{job_id}/events") as stream:
             line_iter = stream.iter_lines()
@@ -80,7 +80,7 @@ def test_iterations_clamp(monkeypatch):
 def test_request_size_limit(monkeypatch):
     client, _ = create_client(monkeypatch, OPENROUTER_API_KEY="dev", MAX_REQUEST_BYTES=10)
     with client:
-        resp = client.post("/optimize", json={"data": "x" * 50})
+        resp = client.post("/optimize", json={"prompt": "x" * 50})
         assert resp.status_code == 413
 
 
@@ -92,7 +92,7 @@ def test_rate_limit(monkeypatch):
         RATE_LIMIT_OPTIMIZE_BURST=2,
     )
     with client:
-        statuses = [client.post("/optimize").status_code for _ in range(10)]
+        statuses = [client.post("/optimize", json={"prompt": "hi"}).status_code for _ in range(10)]
         assert any(code == 429 for code in statuses)
 
 

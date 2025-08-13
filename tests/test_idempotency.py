@@ -15,9 +15,11 @@ def test_idempotent_job_creation(monkeypatch):
     with TestClient(main.app) as client:
         before = metrics.snapshot()["jobs_created"]
         headers = {"Idempotency-Key": "same"}
-        r1 = client.post("/v1/optimize", headers=headers)
-        r2 = client.post("/v1/optimize", headers=headers)
+        r1 = client.post("/v1/optimize", json={"prompt": "hi"}, headers=headers)
+        r2 = client.post("/v1/optimize", json={"prompt": "hi"}, headers=headers)
         assert r1.json()["job_id"] == r2.json()["job_id"]
         assert metrics.snapshot()["jobs_created"] == before + 1
-        r3 = client.post("/v1/optimize", headers={"Idempotency-Key": "other"})
+        r3 = client.post(
+            "/v1/optimize", json={"prompt": "hi"}, headers={"Idempotency-Key": "other"}
+        )
         assert r3.json()["job_id"] != r1.json()["job_id"]

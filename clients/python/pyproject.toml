@@ -1,0 +1,14 @@
+[project]
+name = "gepa-client"
+version = "0.1.0"
+description = "Async Python client for GEPA"
+authors = [{name="GEPA"}]
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.7",
+]
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"

@@ -22,11 +22,10 @@ def create_client(monkeypatch, **env):
 def test_401_no_bypass(monkeypatch):
     client = create_client(monkeypatch, OPENROUTER_API_KEY=None, API_BEARER_TOKENS=None)
     with client:
-        resp = client.post("/optimize", headers={"X-Request-ID": "test-req"})
+        resp = client.post("/optimize", json={"prompt": "hi"}, headers={"X-Request-ID": "test-req"})
         assert resp.status_code == 401
         body = resp.json()
-        assert body["code"] == "unauthorized"
-        assert body["request_id"] == "test-req"
+        assert body["error"]["code"] == "unauthorized"
         assert resp.headers["x-request-id"] == "test-req"
 
 
@@ -35,13 +34,13 @@ def test_events_404(monkeypatch):
     with client:
         resp = client.get("/optimize/does-not-exist/events")
         assert resp.status_code == 404
-        assert resp.json()["code"] == "not_found"
+        assert resp.json()["error"]["code"] == "not_found"
 
 
 def test_state_endpoint(monkeypatch):
     client = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
     with client:
-        job_id = client.post("/optimize").json()["job_id"]
+        job_id = client.post("/optimize", json={"prompt": "hi"}).json()["job_id"]
         state = client.get(f"/optimize/{job_id}").json()
         assert state["status"] in {"running", "finished"}
 
@@ -49,7 +48,7 @@ def test_state_endpoint(monkeypatch):
 def test_cancel_flow(monkeypatch):
     client = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
     with client:
-        job_id = client.post("/optimize", params={"iterations": 2}).json()["job_id"]
+        job_id = client.post("/optimize", json={"prompt": "hi"}, params={"iterations": 2}).json()["job_id"]
         client.delete(f"/optimize/{job_id}")
         deadline = time.time() + 1
         while time.time() < deadline:
@@ -62,6 +61,9 @@ def test_cancel_flow(monkeypatch):
         with client.stream("GET", f"/optimize/{job_id}/events") as stream:
             events = [line for line in stream.iter_lines() if line.startswith("event:")]
         assert any(e == "event: cancelled" for e in events)
+        resp = client.delete(f"/optimize/{job_id}")
+        assert resp.status_code == 409
+        assert resp.json()["error"]["code"] == "not_cancelable"
 
 
 def test_rate_limit(monkeypatch):
@@ -72,27 +74,27 @@ def test_rate_limit(monkeypatch):
         codes = []
         bodies = []
         for _ in range(3):
-            resp = client.post("/optimize")
+            resp = client.post("/optimize", json={"prompt": "hi"})
             codes.append(resp.status_code)
             if resp.status_code == 429:
                 bodies.append(resp.json())
         assert any(c == 429 for c in codes)
         for body in bodies:
-            assert body["code"] == "rate_limited"
+            assert body["error"]["code"] == "rate_limited"
 
 
 def test_size_limit(monkeypatch):
     client = create_client(monkeypatch, OPENROUTER_API_KEY="dev", MAX_REQUEST_BYTES=10)
     with client:
-        resp = client.post("/optimize", json={"data": "x" * 50})
+        resp = client.post("/optimize", json={"prompt": "x" * 50})
         assert resp.status_code == 413
-        assert resp.json()["code"] == "payload_too_large"
+        assert resp.json()["error"]["code"] == "payload_too_large"
 
 
 def test_sse_schema(monkeypatch):
     client = create_client(monkeypatch, OPENROUTER_API_KEY="dev")
     with client:
-        job_id = client.post("/optimize").json()["job_id"]
+        job_id = client.post("/optimize", json={"prompt": "hi"}).json()["job_id"]
         with client.stream("GET", f"/optimize/{job_id}/events") as stream:
             it = stream.iter_lines()
             prelude = next(it)

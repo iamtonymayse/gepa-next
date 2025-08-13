@@ -13,7 +13,7 @@ def test_sse_resume(monkeypatch):
     import innerloop.main as main
     importlib.reload(main)
     with TestClient(main.app) as client:
-        resp = client.post("/v1/optimize", params={"iterations": 3})
+        resp = client.post("/v1/optimize", json={"prompt": "hi"}, params={"iterations": 3})
         job_id = resp.json()["job_id"]
 
         with client.stream("GET", f"/v1/optimize/{job_id}/events") as stream:

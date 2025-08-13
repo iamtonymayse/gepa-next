@@ -18,7 +18,12 @@ def test_persistence_across_reload(monkeypatch, tmp_path, store):
     importlib.reload(main)
     with TestClient(main.app) as client:
         headers = {"Idempotency-Key": "abc"}
-        job_id = client.post("/v1/optimize", params={"iterations": 1}, headers=headers).json()["job_id"]
+        job_id = client.post(
+            "/v1/optimize",
+            json={"prompt": "hi"},
+            params={"iterations": 1},
+            headers=headers,
+        ).json()["job_id"]
         # wait for finish
         deadline = time.time() + 2
         while time.time() < deadline:
@@ -41,10 +46,10 @@ def test_persistence_across_reload(monkeypatch, tmp_path, store):
                     if line.startswith("data:") and events and events[-1] == "finished":
                         break
             assert events == ["started", "progress", "finished"]
-            resp2 = client2.post("/v1/optimize", headers=headers)
+            resp2 = client2.post("/v1/optimize", json={"prompt": "hi"}, headers=headers)
             assert resp2.json()["job_id"] == job_id
         else:
             resp = client2.get(f"/v1/optimize/{job_id}/events")
             assert resp.status_code == 404
-            resp2 = client2.post("/v1/optimize", headers=headers)
+            resp2 = client2.post("/v1/optimize", json={"prompt": "hi"}, headers=headers)
             assert resp2.json()["job_id"] != job_id

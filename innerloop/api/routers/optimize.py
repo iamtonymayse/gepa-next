@@ -7,7 +7,14 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 
 from ..jobs.registry import JobRegistry, JobStatus
-from ..models import ErrorResponse
+from ..models import (
+    APIError,
+    ErrorCode,
+    JobState,
+    OptimizeRequest,
+    OptimizeResponse,
+    error_response,
+)
 from ..sse import format_sse, prelude_retry_ms, SSE_TERMINALS
 from ..metrics import inc
 from ...settings import get_settings
@@ -15,63 +22,90 @@ from ...settings import get_settings
 router = APIRouter()
 
 
-@router.post("/optimize")
-async def create_optimize_job(request: Request, iterations: int = 1) -> dict[str, str]:
+@router.post(
+    "/optimize",
+    response_model=OptimizeResponse,
+    summary="Create optimization job",
+    description="Create an optimization job. Use optional Idempotency-Key header to dedupe requests.",
+    responses={401: {"model": APIError}, 429: {"model": APIError}, 413: {"model": APIError}},
+)
+async def create_optimize_job(
+    request: Request,
+    body: OptimizeRequest,
+    iterations: int = 1,
+) -> OptimizeResponse:
     registry: JobRegistry = request.app.state.registry
     idem_key = request.headers.get("Idempotency-Key")
-    job, created = await registry.create_job(iterations, {}, idempotency_key=idem_key)
+    job, created = await registry.create_job(
+        iterations, body.model_dump(), idempotency_key=idem_key
+    )
     request.state.job_id = job.id
     if created:
         inc("jobs_created")
-    return {"job_id": job.id}
+    return OptimizeResponse(job_id=job.id)
 
 
-@router.get("/optimize/{job_id}")
-async def get_job(request: Request, job_id: str) -> dict:
+@router.get("/optimize/{job_id}", response_model=JobState)
+async def get_job(request: Request, job_id: str) -> JobState | JSONResponse:
     registry: JobRegistry = request.app.state.registry
     store = request.app.state.store
     job = registry.jobs.get(job_id)
     if job is None:
         record = await store.get_job(job_id)
         if record is None:
-            err = ErrorResponse(
-                code="not_found", message="Job not found", request_id=request.state.request_id
+            return error_response(
+                ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id
             )
-            return JSONResponse(err.model_dump(), status_code=404)
         request.state.job_id = job_id
-        return {
-            "job_id": record["id"],
-            "status": record["status"],
-            "created_at": record["created_at"],
-            "updated_at": record["updated_at"],
-            "result": record.get("result"),
-        }
+        return JobState(
+            job_id=record["id"],
+            status=record["status"],
+            created_at=record["created_at"],
+            updated_at=record["updated_at"],
+            result=record.get("result"),
+        )
     request.state.job_id = job_id
-    return {
-        "job_id": job.id,
-        "status": job.status.value,
-        "created_at": job.created_at,
-        "updated_at": job.updated_at,
-        "result": job.result,
-    }
+    return JobState(
+        job_id=job.id,
+        status=job.status.value,
+        created_at=job.created_at,
+        updated_at=job.updated_at,
+        result=job.result,
+    )
 
 
-@router.delete("/optimize/{job_id}")
-async def cancel_job_endpoint(request: Request, job_id: str) -> dict:
+@router.delete("/optimize/{job_id}", response_model=JobState)
+async def cancel_job_endpoint(request: Request, job_id: str):
     registry: JobRegistry = request.app.state.registry
     job = registry.jobs.get(job_id)
     if job is None:
-        err = ErrorResponse(code="not_found", message="Job not found", request_id=request.state.request_id)
-        return JSONResponse(err.model_dump(), status_code=404)
+        return error_response(
+            ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id
+        )
     if job.status != JobStatus.RUNNING:
-        err = ErrorResponse(code="not_cancelable", message="Job not cancelable", request_id=request.state.request_id)
-        return JSONResponse(err.model_dump(), status_code=409)
+        return error_response(
+            ErrorCode.not_cancelable,
+            "Job not cancelable",
+            409,
+            request_id=request.state.request_id,
+        )
     request.state.job_id = job_id
     await registry.cancel_job(job_id)
-    return {"job_id": job_id, "status": job.status.value}
+    return JobState(
+        job_id=job_id,
+        status=job.status.value,
+        created_at=job.created_at,
+        updated_at=job.updated_at,
+        result=job.result,
+    )
 
 
-@router.get("/optimize/{job_id}/events")
+@router.get(
+    "/optimize/{job_id}/events",
+    response_class=StreamingResponse,
+    summary="Stream job events",
+    description="Server-Sent Events stream. Use Last-Event-ID header to resume from a specific event id.",
+)
 async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
     registry: JobRegistry = request.app.state.registry
     store = request.app.state.store
@@ -79,10 +113,9 @@ async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
     if job is None:
         record = await store.get_job(job_id)
         if record is None:
-            err = ErrorResponse(
-                code="not_found", message="Job not found", request_id=request.state.request_id
+            return error_response(
+                ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id
             )
-            return JSONResponse(err.model_dump(), status_code=404)
     request.state.job_id = job_id
 
     settings = get_settings()
