@@ -1,20 +1,45 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Literal
+from typing import Any, Dict, List, Literal
 
 from pydantic import BaseModel, Field
+
+
+class DatasetSpec(BaseModel):
+    name: str
+    split: str | None = None
+
+    model_config = {"extra": "forbid"}
+
+
+class BudgetSpec(BaseModel):
+    max_generations: int | None = None
+    max_rollouts: int | None = None
+    max_cost: float | None = None
+
+    model_config = {"extra": "forbid"}
 
 
 class OptimizeRequest(BaseModel):
     prompt: str
     context: Dict[str, Any] | None = None
+    mode: Literal["default", "gepa"] = "default"
+    dataset: DatasetSpec | None = None
+    metrics: List[str] | None = None
+    budget: BudgetSpec | None = None
+    objectives: List[str] | None = None
 
     model_config = {
+        "extra": "forbid",
         "json_schema_extra": {
             "examples": [
-                {"prompt": "Write a haiku", "context": {"topic": "clouds"}}
+                {
+                    "prompt": "Write a haiku",
+                    "context": {"topic": "clouds"},
+                    "mode": "default",
+                }
             ]
-        }
+        },
     }
 
 
@@ -49,7 +74,14 @@ class JobState(BaseModel):
 
 
 class SSEEnvelope(BaseModel):
-    type: Literal["started", "progress", "finished", "failed", "cancelled", "shutdown"]
+    type: Literal[
+        "started",
+        "progress",
+        "finished",
+        "failed",
+        "cancelled",
+        "shutdown",
+    ]
     schema_version: int = 1
     job_id: str
     ts: float
