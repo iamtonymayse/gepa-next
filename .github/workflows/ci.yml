@@ -79,7 +79,7 @@ jobs:
 
       - name: Schemathesis fuzz (exclude SSE stream endpoint)
         run: |
-          schemathesis run \
+          schemathesis run docs/openapi.snap.json \
             --app innerloop.main:app \
             --checks all \
             --hypothesis-max-examples=20 \
