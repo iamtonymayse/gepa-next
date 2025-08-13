@@ -77,6 +77,25 @@ jobs:
             echo "innerloop/ not found under $PROJ_DIR; skipping mypy"
           fi
 
+      - name: OpenAPI snapshot check (non-destructive on first run)
+        run: |
+          python tools/snapshot_openapi.py || (echo "::error ::OpenAPI drift detected. Run tools/snapshot_openapi.py --update locally and commit the snapshot." && exit 1)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/${{ env.PROJ_DIR }}
+        working-directory: ${{ env.PROJ_DIR }}
+
+      - name: Schemathesis fuzz (exclude SSE stream endpoint)
+        run: |
+          schemathesis run \
+            --app innerloop.main:app \
+            --checks all \
+            --hypothesis-max-examples=20 \
+            --endpoint '^(?!/v1/optimize/.*/events).*$'
+        env:
+          PYTHONPATH: ${{ github.workspace }}/${{ env.PROJ_DIR }}
+          OPENROUTER_API_KEY: dev
+        working-directory: ${{ env.PROJ_DIR }}
+
       - name: Security scan
         run: bandit -r "$PROJ_DIR" -x "$PROJ_DIR/tests" -q
 
@@ -97,6 +116,44 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/${{ env.PROJ_DIR }}
         working-directory: ${{ env.PROJ_DIR }}
 
+      - name: Mutation testing (focused)
+        run: |
+          mutmut run --no-progress --paths-to-mutate innerloop/domain/optimize_engine.py,innerloop/api/jobs/registry.py --tests-dir tests -j 2
+          SURVIVED=$(mutmut results | awk '/^Survived/ {print $2}' || echo 0)
+          echo "Survived mutants: $SURVIVED"
+          # allow a couple initially; tighten later
+          [ -z "$SURVIVED" ] && SURVIVED=0
+          if [ "$SURVIVED" -gt 2 ]; then
+            echo "::error ::More than 2 surviving mutants ($SURVIVED)."
+            mutmut results
+            exit 1
+          fi
+        env:
+          PYTHONPATH: ${{ github.workspace }}/${{ env.PROJ_DIR }}
+        working-directory: ${{ env.PROJ_DIR }}
+
+      - name: pip-audit (dependencies)
+        run: pip-audit -r requirements.txt
+
+      - name: Generate SBOM (CycloneDX)
+        run: cyclonedx-py -e -o sbom.json
+        working-directory: ${{ env.PROJ_DIR }}
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: --no-git -v
+
       - name: Upload examples
         uses: actions/upload-artifact@v4
         with:
@@ -104,3 +161,11 @@ jobs:
           path: |
             examples/
             docs/postman/
+
+      - name: Upload QA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-artifacts
+          path: |
+            ${{ env.PROJ_DIR }}/docs/openapi.snap.json
+            ${{ env.PROJ_DIR }}/sbom.json
