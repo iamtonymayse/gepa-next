@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Callable, List, Sequence, TypeVar
 
-from .judge import judge_pair, judge_score
+from .judge import judge_pair
 from .recombination import recombine
 
 T = TypeVar("T")
