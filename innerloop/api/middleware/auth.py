@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Callable
 import hmac
+import uuid
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -15,6 +16,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
         settings = get_settings()
         path = request.url.path
+
+        request_id = getattr(
+            request.state, "request_id", request.headers.get("x-request-id") or str(uuid.uuid4())
+        )
+        request.state.request_id = request_id
 
         # Public endpoints
         if path.startswith(("/healthz", "/readyz", "/v1/healthz", "/v1/readyz")):
@@ -33,12 +39,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         auth_header = request.headers.get("authorization")
         if not auth_header or not auth_header.lower().startswith("bearer "):
-            err = ErrorResponse(code="unauthorized", message="Unauthorized", request_id=request.state.request_id)
-            return JSONResponse(err.model_dump(), status_code=401)
+            err = ErrorResponse(code="unauthorized", message="Unauthorized", request_id=request_id)
+            return JSONResponse(err.model_dump(), status_code=401, headers={"X-Request-ID": request_id})
         token = auth_header.split(" ", 1)[1]
         valid = any(hmac.compare_digest(token, t) for t in settings.API_BEARER_TOKENS)
         if not valid:
-            err = ErrorResponse(code="unauthorized", message="Unauthorized", request_id=request.state.request_id)
-            return JSONResponse(err.model_dump(), status_code=401)
+            err = ErrorResponse(code="unauthorized", message="Unauthorized", request_id=request_id)
+            return JSONResponse(err.model_dump(), status_code=401, headers={"X-Request-ID": request_id})
 
         return await call_next(request)

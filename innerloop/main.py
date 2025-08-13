@@ -53,11 +53,12 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
-    app.add_middleware(SizeLimitMiddleware)
-    app.add_middleware(RateLimitMiddleware)
-    app.add_middleware(AuthMiddleware)
-    app.add_middleware(DeprecationMiddleware)
+    # Middleware order matters: Logging→Auth→RateLimit→SizeLimit.
     app.add_middleware(LoggingMiddleware)
+    app.add_middleware(AuthMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(SizeLimitMiddleware)
+    app.add_middleware(DeprecationMiddleware)
 
     # Versioned routers
     app.include_router(health_router, prefix="/v1", tags=["v1"])

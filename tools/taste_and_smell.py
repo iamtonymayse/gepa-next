@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+
 import ast
 import json
+import logging
 import re
 import subprocess  # nosec B404
 import sys
@@ -20,6 +22,10 @@ class Finding:
     diff: str = ""
 
 
+# Subprocess timeout bookkeeping
+timeout_findings: List[Finding] = []
+
+
 def detect_proj_dir() -> Path:
     root = Path.cwd()
     if (root / "innerloop").exists():
@@ -29,7 +35,7 @@ def detect_proj_dir() -> Path:
     return root
 
 
-def run(cmd: List[str], cwd: Path, timeout: int = 300) -> Tuple[int, str, str]:
+def run(cmd: List[str], cwd: Path, timeout: int = 120) -> Tuple[int, str, str]:
     try:
         proc = subprocess.run(  # nosec B603
             cmd,
@@ -43,6 +49,16 @@ def run(cmd: List[str], cwd: Path, timeout: int = 300) -> Tuple[int, str, str]:
     except FileNotFoundError:
         return 127, "", f"{cmd[0]} not installed"
     except subprocess.TimeoutExpired as exc:  # pragma: no cover - defensive
+        timeout_findings.append(
+            Finding(
+                "MED",
+                "PERF",
+                "tools/taste_and_smell.py",
+                0,
+                f"{' '.join(cmd)} timed out after {timeout}s",
+                "",
+            )
+        )
         return 124, str(exc.stdout or ""), f"timeout after {timeout}s"
 
 
@@ -253,7 +269,12 @@ def scan_smells(proj: Path) -> List[Finding]:
         rel = str(path.relative_to(proj))
         for pat, sev, tag, msg in [
             (r"time\.sleep\(", "MED", "PERF", "time.sleep in async context"),
-            (r"subprocess\.run\(", "MED", "PERF", "blocking subprocess.run"),
+            (
+                r"subprocess\.run\((?![^)]*timeout=)",
+                "MED",
+                "PERF",
+                "blocking subprocess.run",
+            ),
             (r"requests\.", "MED", "PERF", "requests usage in endpoint"),
             (r"print\(", "LOW", "STYLE", "print statement"),
             (r"from .* import \*", "LOW", "STYLE", "star import"),
@@ -367,6 +388,7 @@ def render_markdown(
 def main(argv: Iterable[str] | None = None) -> int:
     import argparse
 
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("--fast", action="store_true", help="skip heavier checks")
     args = parser.parse_args(list(argv) if argv is not None else None)
@@ -386,7 +408,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         cov = run_pytest_cov(proj) if not args.fast else {"coverage": 0, "out": "", "err": ""}
         fastapi_info, fa_findings = fastapi_checks(proj)
         smell_findings = scan_smells(proj)
-        findings = fa_findings + smell_findings
+        findings = fa_findings + smell_findings + timeout_findings
         score = {
             "ruff": ruff["issues"],
             "mypy": mypy["errors"],
@@ -417,7 +439,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         content = f"# Taste and Smell Audit\n\nError during audit: {exc}\n\n````\n{tb}\n````"
 
     report.write_text(content, encoding="utf-8")
-    print(f"Wrote {report}")
+    logging.info(f"Wrote {report}")
     return 0
 
 
