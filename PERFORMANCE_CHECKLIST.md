@@ -34,7 +34,7 @@ Optimal server flags reduce latency and prevent connection churn during long str
 ## 2. Async I/O Discipline
 **Checklist**
 - No blocking calls; use `asyncio.sleep` only for brief SSE flushes.
-- Use bounded `asyncio.Queue` (`SSE_QUEUE_MAXSIZE`) for backpressure.
+- Use bounded `asyncio.Queue` (`SSE_BUFFER_SIZE`) for backpressure.
 
 **Why it matters**
 Blocking the event loop stalls all clients; bounded queues avoid unbounded memory use.
@@ -120,7 +120,7 @@ Metrics drive capacity planning and alerting.
 ## 9. Capacity Planning
 **Checklist**
 - Estimate memory per job/client to size instances.
-- Relate concurrency to `SSE_QUEUE_MAXSIZE` and TTLs.
+- Relate concurrency to `SSE_BUFFER_SIZE` and TTLs.
 
 **Why it matters**
 Prevents overcommit and provides headroom for bursts.
