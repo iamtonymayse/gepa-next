@@ -30,6 +30,6 @@ def apply_edits(candidate: Candidate, edits: Sequence[Mapping[str, Any]]) -> Can
         op = OPERATORS.get(op_name)
         if not op:
             continue
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # nosec B311
         new = op(new, rng=rng, **args)
     return new

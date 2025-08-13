@@ -80,7 +80,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
         lessons = update_lessons_journal(lessons, cast(List[str], refl.get("lessons", [])))
         await emit(job, "lessons_updated", {"count": len(lessons), "sample": lessons[:3]})
         edited = apply_edits(best, cast(Sequence[Dict[str, Any]], refl.get("edits", [])))
-        rng = random.Random(gen)
+        rng = random.Random(gen)  # nosec B311
         mutated = OPERATORS["reorder_sections"](edited, rng=rng)
         population = [mutated]
         await emit(job, "budget_progress", {"rollouts": rollouts})
