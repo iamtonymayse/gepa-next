@@ -21,7 +21,7 @@ docker-run:
 	docker run -p 8000:8000 gepa-next
 
 taste:
-	python tools/taste_and_smell.py
+	poetry run python tools/taste_and_smell.py
 
 taste-fast:
 	python tools/taste_and_smell.py --fast
