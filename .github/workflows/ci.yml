@@ -116,7 +116,7 @@ jobs:
 
       - name: Mutation testing (focused)
         run: |
-          mutmut run --no-progress --paths-to-mutate innerloop/domain/optimize_engine.py,innerloop/api/jobs/registry.py --tests-dir tests -j 2
+          mutmut run --paths-to-mutate innerloop/domain/optimize_engine.py,innerloop/api/jobs/registry.py --tests-dir tests
           SURVIVED=$(mutmut results | awk '/^Survived/ {print $2}' || echo 0)
           echo "Survived mutants: $SURVIVED"
           # allow a couple initially; tighten later

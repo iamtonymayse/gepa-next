@@ -13,6 +13,6 @@ bandit>=1.7
 radon>=6.0
 hypothesis>=6.100
 schemathesis>=3.24,<4
-mutmut>=2.4
+mutmut>=2.4,<3
 cyclonedx-bom>=4.1
 pip-audit>=2.7
