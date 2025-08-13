@@ -96,7 +96,7 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
 
         # Reviewer critiques the draft
         reviewer = await run_reflection(
-            author.get("proposal") or base_text,
+            cast(str, author.get("proposal") or base_text),
             "reviewer",
             gen,
             examples=ex_dicts,
