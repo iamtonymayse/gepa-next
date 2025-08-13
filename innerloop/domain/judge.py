@@ -92,8 +92,12 @@ _last = 0.0
 
 
 def _norm(task: str, a: str, b: str) -> tuple[str, str, str]:
-    x, y = (a or "").strip(), (b or "").strip()
-    return (task or "",) + tuple(sorted([x, y]))
+    x = (a or "").strip()
+    y = (b or "").strip()
+    if x <= y:
+        return (task or "", x, y)
+    else:
+        return (task or "", y, x)
 
 
 async def _throttle():
@@ -130,7 +134,12 @@ async def judge_pair(task: str, a: str, b: str, store=None) -> Dict[str, Any]:
         except Exception:
             res = {"winner": "A", "confidence": 0.5, "justification": "parse-fallback"}
     if store:
-        await store.set_judge_cached(*key, res["winner"], float(res.get("confidence", 0.5)))
+        confidence_val: Any = res.get("confidence", 0.5)
+        try:
+            confidence = float(confidence_val)
+        except (TypeError, ValueError):
+            confidence = 0.5
+        await store.set_judge_cached(*key, res["winner"], confidence)
     return res
 
 

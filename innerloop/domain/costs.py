@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from ..settings import get_settings
 
 
@@ -13,7 +15,8 @@ class CostTracker:
 
     def usd(self, model: str) -> float:
         s = get_settings()
-        price = s.MODEL_PRICES.get(model, {"input": 0.0, "output": 0.0})
+        prices = cast(dict[str, dict[str, float]], s.MODEL_PRICES)
+        price = prices.get(model, {"input": 0.0, "output": 0.0})
         return (
             self.toks["input"] * price["input"] / 1e6
             + self.toks["output"] * price["output"] / 1e6
