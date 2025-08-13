@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     SSE_PING_INTERVAL_S: float = 1.0
     SSE_BACKPRESSURE_FAIL_TIMEOUT_S: float = 2.0
     SSE_BUFFER_SIZE: int = 200
-    MAX_ITERATIONS: int = 10
+    MAX_ITERATIONS: int = 4
+    # Logging
+    LOG_LEVEL: str = "INFO"  # DEBUG|INFO|WARNING|ERROR
+    DEBUG_LOG_CONSOLE: bool = False  # if true, always log to console/stdout
     MAX_REQUEST_BYTES: int = 64_000
     RATE_LIMIT_PER_MIN: int = 60
     RATE_LIMIT_BURST: int = 30
@@ -66,7 +69,8 @@ class Settings(BaseSettings):
     SQLITE_PATH: str = "gepa.db"
     COST_TRACKING_ENABLED: bool = True
     MODEL_PRICES_JSON: str = (
-        '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},' '"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
+        '{"openai:gpt-5-judge":{"input":0.0,"output":0.0},'
+        '"openai:gpt-4o-mini":{"input":0.0,"output":0.0}}'
     )
     EVAL_MAX_EXAMPLES: int = 100
     EVAL_MAX_CONCURRENCY: int = 8
