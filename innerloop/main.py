@@ -20,6 +20,7 @@ from .api.routers.admin import router as admin_router
 from .api.jobs.registry import JobRegistry
 from .api.jobs.store import JobStore, MemoryJobStore, SQLiteJobStore
 from .api.models import ErrorCode, error_response
+from .domain.engine import close_provider
 
 
 @asynccontextmanager
@@ -42,6 +43,9 @@ async def lifespan(app: FastAPI):
         reaper_task.cancel()
         with suppress(Exception, asyncio.CancelledError):
             await reaper_task
+        # Close any cached external provider clients (if used)
+        with suppress(Exception):
+            await close_provider()
 
 
 def create_app() -> FastAPI:

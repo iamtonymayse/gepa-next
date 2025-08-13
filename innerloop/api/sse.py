@@ -12,10 +12,12 @@ def format_sse(event_type: str, envelope: Dict) -> str:
         "schema_version": 1,
         "job_id": envelope.get("job_id"),
         "ts": envelope.get("ts"),
+        "id": envelope.get("id"),
         "data": envelope.get("data", {}),
     }
+    id_line = f"id: {envelope['id']}\n" if envelope.get("id") is not None else ""
     return (
-        f"id: {envelope.get('id')}\n"
+        id_line
         + f"event: {event_type}\n"
         + f"data: {json.dumps(payload, separators=(',', ':'))}\n\n"
     )

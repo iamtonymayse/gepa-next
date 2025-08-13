@@ -30,11 +30,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             client_ip = client_ip.split(",")[0].strip()
             query = request.url.query
             if len(query) > 256:
-                query = query[:256] + "..."
+                query = query[:256] + "…"
             headers = {k: v for k, v in request.headers.items()}
             for key in list(headers.keys()):
                 if key.lower() == "authorization":
                     headers[key] = "REDACTED"
+            allowed = {"x-request-id", "user-agent", "accept", "accept-encoding"}
+            headers = {k: v for k, v in headers.items() if k.lower() in allowed}
             extra = {
                 "method": request.method,
                 "path": request.url.path,
