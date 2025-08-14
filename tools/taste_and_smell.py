@@ -2,15 +2,17 @@
 from __future__ import annotations
 
 import ast
+from dataclasses import dataclass
+from datetime import datetime
 import json
 import logging
+from pathlib import Path
 import re
 import subprocess  # nosec B404
 import sys
-from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
+
+
 @dataclass
 class Finding:
     severity: str
@@ -418,14 +420,18 @@ def render_markdown(
         lines.append(f"- **{k.replace('_', ' ').title()}**: {v}")
     lines.append("\n## 4. Smell catalog")
     for f in findings:
-        lines.append(f"- `{f.severity}` `{f.tag}` {f.file}:{f.line} – {f.message}\n\n````\n{f.snippet}\n````")
+        lines.append(
+            f"- `{f.severity}` `{f.tag}` {f.file}:{f.line} – {f.message}\n\n````\n{f.snippet}\n````"
+        )
         if f.diff:
             lines.append(f"  Suggested diff:\n  ```diff\n{f.diff}\n  ```")
     lines.append("\n## 5. Polish plan")
     for idx, f in enumerate(findings[:8], 1):
         payoff = "HIGH" if f.severity == "HIGH" else "MED"
         effort = "S" if f.severity == "LOW" else "M"
-        lines.append(f"{idx}. {f.message} ({f.file}:{f.line}) – effort {effort}, payoff {payoff}")
+        lines.append(
+            f"{idx}. {f.message} ({f.file}:{f.line}) – effort {effort}, payoff {payoff}"
+        )
     lines.append("\n## 6. Appendices")
     for name, content in appendices.items():
         lines.append(f"### {name}\n````\n{content}\n````")
@@ -453,7 +459,11 @@ def main(argv: Iterable[str] | None = None) -> int:
         bandit = check_bandit(proj)
         radon = check_radon(proj) if not args.fast else {"cc": {}, "mi": {}}
         run_pytest_smoke(proj)
-        cov = run_pytest_cov(proj) if not args.fast else {"coverage": 0, "out": "", "err": ""}
+        cov = (
+            run_pytest_cov(proj)
+            if not args.fast
+            else {"coverage": 0, "out": "", "err": ""}
+        )
         fastapi_info, fa_findings = fastapi_checks(proj)
         smell_findings = scan_smells(proj)
         findings = fa_findings + smell_findings + timeout_findings
@@ -470,21 +480,22 @@ def main(argv: Iterable[str] | None = None) -> int:
         for f in findings:
             by_sev[f.severity] = by_sev.get(f.severity, 0) + 1
         summary = [
-            f"{sev}: {cnt} issue(s)" for sev, cnt in sorted(by_sev.items(), reverse=True)
+            f"{sev}: {cnt} issue(s)"
+            for sev, cnt in sorted(by_sev.items(), reverse=True)
         ][:3]
         appendices = {
             "ruff": json.dumps(ruff["issues"], indent=2)[:1000],
             "mypy": "\n".join(mypy["errors"][:20]),
             "bandit": json.dumps(bandit["issues"], indent=2)[:1000],
         }
-        content = render_markdown(
-            summary, score, fastapi_info, findings, appendices
-        )
+        content = render_markdown(summary, score, fastapi_info, findings, appendices)
     except Exception as exc:  # pragma: no cover - defensive
         import traceback
 
         tb = traceback.format_exc(limit=5)
-        content = f"# Taste and Smell Audit\n\nError during audit: {exc}\n\n````\n{tb}\n````"
+        content = (
+            f"# Taste and Smell Audit\n\nError during audit: {exc}\n\n````\n{tb}\n````"
+        )
 
     report.write_text(content, encoding="utf-8")
     logging.info(f"Wrote {report}")

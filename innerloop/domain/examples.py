@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
+import json
 from pathlib import Path
 from typing import List
 
@@ -52,4 +52,6 @@ def load_pack(name: str) -> ExamplePack:
                 out = rec.get("output", "")
             meta = {k: v for k, v in rec.items() if k not in _EXCLUDED_KEYS}
             examples.append(Example(str(rec.get("id")), inp, out, meta))
-    return ExamplePack(name=name, metrics=pack_info.get("metrics", []), examples=examples)
+    return ExamplePack(
+        name=name, metrics=pack_info.get("metrics", []), examples=examples
+    )

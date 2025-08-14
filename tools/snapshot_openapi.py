@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
+import sys
 
 from innerloop.main import app
 
@@ -37,7 +37,9 @@ def main() -> int:
 
     old = SNAP_PATH.read_text(encoding="utf-8")
     if old != data:
-        print("[snapshot-openapi] OpenAPI drift detected. Run with --update to refresh snapshot.")
+        print(
+            "[snapshot-openapi] OpenAPI drift detected. Run with --update to refresh snapshot."
+        )
         return 1
 
     print("[snapshot-openapi] snapshot OK")

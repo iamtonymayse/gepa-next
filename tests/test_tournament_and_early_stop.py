@@ -1,4 +1,5 @@
 import importlib
+
 from fastapi.testclient import TestClient
 
 
@@ -9,8 +10,10 @@ def reload_env(monkeypatch, **env):
         else:
             monkeypatch.setenv(k, str(v))
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     return main
 
@@ -37,7 +40,9 @@ def test_early_stop_and_events(monkeypatch):
         job = r.json()["job_id"]
         saw = set()
         with client.stream(
-            "GET", f"/v1/optimize/{job}/events", headers={"Authorization": "Bearer token"}
+            "GET",
+            f"/v1/optimize/{job}/events",
+            headers={"Authorization": "Bearer token"},
         ) as s:
             for ln in s.iter_lines():
                 if ln.startswith("event:"):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import logging
 from contextlib import suppress
+import logging
 from typing import Dict, Optional, Protocol
 
 import httpx
@@ -54,13 +54,19 @@ class OpenRouterProvider:
             model = kwargs.get("model") or settings.TARGET_MODEL_DEFAULT
             body: Dict[str, object] = {
                 "model": model,
-                "messages": (messages if messages is not None else [{"role": "user", "content": prompt}]),
+                "messages": (
+                    messages
+                    if messages is not None
+                    else [{"role": "user", "content": prompt}]
+                ),
             }
             if temperature is not None:
                 body["temperature"] = temperature
             if max_tokens is not None:
                 body["max_tokens"] = max_tokens
-            resp = await self.client.post("https://openrouter.ai/api/v1/chat/completions", json=body)
+            resp = await self.client.post(
+                "https://openrouter.ai/api/v1/chat/completions", json=body
+            )
             data = resp.json()
             return data.get("choices", [{}])[0].get("message", {}).get("content", "")
         except Exception:
@@ -87,13 +93,19 @@ class OpenAIProvider:
             model = kwargs.get("model")
             body: Dict[str, object] = {
                 "model": model,
-                "messages": (messages if messages is not None else [{"role": "user", "content": prompt}]),
+                "messages": (
+                    messages
+                    if messages is not None
+                    else [{"role": "user", "content": prompt}]
+                ),
             }
             if temperature is not None:
                 body["temperature"] = temperature
             if max_tokens is not None:
                 body["max_tokens"] = max_tokens
-            resp = await self.client.post("https://api.openai.com/v1/chat/completions", json=body)
+            resp = await self.client.post(
+                "https://api.openai.com/v1/chat/completions", json=body
+            )
             data = resp.json()
             return data.get("choices", [{}])[0].get("message", {}).get("content", "")
         except Exception:
@@ -134,7 +146,9 @@ def get_judge_provider(settings: Optional[Settings] = None) -> ModelProvider:
             if getattr(settings, "ALLOW_JUDGE_FALLBACK", False):
                 logger.warning("OpenRouter judge missing OPENAI_API_KEY; falling back")
                 return LocalEchoProvider()
-            raise RuntimeError("JUDGE_PROVIDER=openrouter requires OPENAI_API_KEY for GPT-5 judge")
+            raise RuntimeError(
+                "JUDGE_PROVIDER=openrouter requires OPENAI_API_KEY for GPT-5 judge"
+            )
         if settings.OPENROUTER_API_KEY:
             extra = {"X-OpenAI-Api-Key": settings.OPENAI_API_KEY}
             if (
@@ -151,9 +165,12 @@ def get_judge_provider(settings: Optional[Settings] = None) -> ModelProvider:
     if settings.JUDGE_PROVIDER == "openai" and settings.OPENAI_API_KEY:
         if (
             not isinstance(_judge_provider_singleton, OpenAIProvider)
-            or _judge_provider_singleton.client.headers.get("Authorization") != f"Bearer {settings.OPENAI_API_KEY}"
+            or _judge_provider_singleton.client.headers.get("Authorization")
+            != f"Bearer {settings.OPENAI_API_KEY}"
         ):
-            _judge_provider_singleton = OpenAIProvider(settings.OPENAI_API_KEY, timeout=settings.JUDGE_TIMEOUT_S)
+            _judge_provider_singleton = OpenAIProvider(
+                settings.OPENAI_API_KEY, timeout=settings.JUDGE_TIMEOUT_S
+            )
         return _judge_provider_singleton
     return LocalEchoProvider()
 

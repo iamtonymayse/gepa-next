@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from typing import List, Dict
+from typing import Dict, List
+
 from ..settings import get_settings
+from .judge import judge_pair
 from .mutations import mutate_prompt
 from .optimize_engine import pareto_filter
-from .judge import judge_pair
 from .recombination import recombine
 
 
-async def run_eval(store, base_prompt: str, target_model: str | None, seed: int, limits: dict, emit):
+async def run_eval(
+    store, base_prompt: str, target_model: str | None, seed: int, limits: dict, emit
+):
     s = get_settings()
     max_ex = min(limits.get("max_examples") or s.EVAL_MAX_EXAMPLES, s.EVAL_MAX_EXAMPLES)
     examples = await store.list_examples(limit=max_ex, offset=0)

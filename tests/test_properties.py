@@ -44,7 +44,11 @@ def test_pareto_invariants(items: List[str], n: int) -> None:
                 assert not _dominates(sj, si)
 
 
-@hsettings(max_examples=20, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@hsettings(
+    max_examples=20,
+    deadline=None,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)
 @given(st.integers(min_value=1, max_value=3))
 def test_sse_invariants(monkeypatch, iterations: int) -> None:
     # auth bypass for /optimize
@@ -59,10 +63,15 @@ def test_sse_invariants(monkeypatch, iterations: int) -> None:
     with TestClient(main.app) as client:
         headers = {"Authorization": "Bearer token"}
         job_id = client.post(
-            "/v1/optimize", json={"prompt": "x"}, params={"iterations": iterations}, headers=headers
+            "/v1/optimize",
+            json={"prompt": "x"},
+            params={"iterations": iterations},
+            headers=headers,
         ).json()["job_id"]
 
-        with client.stream("GET", f"/v1/optimize/{job_id}/events", headers=headers) as stream:
+        with client.stream(
+            "GET", f"/v1/optimize/{job_id}/events", headers=headers
+        ) as stream:
             it = stream.iter_lines()
             first = next(it)
             assert first.startswith("retry:")
@@ -97,11 +106,16 @@ def test_sse_golden_sequence(monkeypatch) -> None:
     importlib.reload(main)
     with TestClient(main.app) as client:
         headers = {"Authorization": "Bearer token"}
-        job_id = client.post("/v1/optimize", json={"prompt": "hi"}, params={"iterations": 1}, headers=headers).json()[
-            "job_id"
-        ]
+        job_id = client.post(
+            "/v1/optimize",
+            json={"prompt": "hi"},
+            params={"iterations": 1},
+            headers=headers,
+        ).json()["job_id"]
 
-        with client.stream("GET", f"/v1/optimize/{job_id}/events", headers=headers) as stream:
+        with client.stream(
+            "GET", f"/v1/optimize/{job_id}/events", headers=headers
+        ) as stream:
             it = stream.iter_lines()
             next(it)  # retry prelude
             seen: list[str] = []

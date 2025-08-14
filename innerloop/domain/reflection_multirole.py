@@ -4,7 +4,9 @@ from collections import Counter
 from typing import List
 
 
-def update_lessons_journal(existing: List[str], new: List[str], max_chars: int = 2000) -> List[str]:
+def update_lessons_journal(
+    existing: List[str], new: List[str], max_chars: int = 2000
+) -> List[str]:
     freq = Counter(existing)
     freq.update(new)
     ordered = [lesson for lesson, _ in freq.most_common()]

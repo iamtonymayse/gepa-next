@@ -83,7 +83,9 @@ class GepaClient:
         temperature: float | None = None,
         max_tokens: int | None = None,
     ) -> str:
-        headers = self._headers({"Idempotency-Key": idempotency_key} if idempotency_key else None)
+        headers = self._headers(
+            {"Idempotency-Key": idempotency_key} if idempotency_key else None
+        )
         params = {"iterations": iterations} if iterations is not None else None
         payload: Dict[str, Any] = {"prompt": prompt}
         if context is not None:
@@ -102,7 +104,9 @@ class GepaClient:
             payload["temperature"] = temperature
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
-        resp = await self._client.post("/v1/optimize", json=payload, params=params, headers=headers)
+        resp = await self._client.post(
+            "/v1/optimize", json=payload, params=params, headers=headers
+        )
         resp.raise_for_status()
         data = resp.json()
         return data["job_id"]
@@ -113,10 +117,14 @@ class GepaClient:
         return JobState(**resp.json())
 
     async def cancel(self, job_id: str) -> None:
-        resp = await self._client.delete(f"/v1/optimize/{job_id}", headers=self._headers())
+        resp = await self._client.delete(
+            f"/v1/optimize/{job_id}", headers=self._headers()
+        )
         resp.raise_for_status()
 
-    async def stream(self, job_id: str, last_event_id: int | None = None) -> AsyncIterator[SSEEnvelope]:
+    async def stream(
+        self, job_id: str, last_event_id: int | None = None
+    ) -> AsyncIterator[SSEEnvelope]:
         backoff = 0.1
         last_id = last_event_id or self._last_ids.get(job_id, 0)
         headers = self._headers({"Last-Event-ID": str(last_id)} if last_id else None)

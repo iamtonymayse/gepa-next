@@ -35,7 +35,10 @@ async def get_job(request: Request, job_id: str) -> JobState | Response:
     record = await store.get_job(job_id)
     if not record:
         return error_response(
-            ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id
+            ErrorCode.not_found,
+            "Job not found",
+            404,
+            request_id=request.state.request_id,
         )
     return JobState(
         job_id=record["id"],
@@ -66,7 +69,10 @@ async def cancel_job(request: Request, job_id: str) -> JobState | Response:
     job = registry.jobs.get(job_id)
     if not job:
         return error_response(
-            ErrorCode.not_found, "Job not found", 404, request_id=request.state.request_id
+            ErrorCode.not_found,
+            "Job not found",
+            404,
+            request_id=request.state.request_id,
         )
     if job.status != JobStatus.RUNNING:
         return error_response(

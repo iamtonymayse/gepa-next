@@ -9,9 +9,15 @@ def test_diversity_meta_and_selection(monkeypatch):
 
     monkeypatch.setattr(gepa_loop, "pareto_filter", fake_pareto)
 
-    cand_a = SimpleNamespace(id="A", sections=["solve by step one two three"], meta={"judge_score": 1.0})
-    cand_b = SimpleNamespace(id="B", sections=["solve by step one two three"], meta={"judge_score": 1.0})
-    cand_c = SimpleNamespace(id="C", sections=["completely different answer path"], meta={"judge_score": 1.0})
+    cand_a = SimpleNamespace(
+        id="A", sections=["solve by step one two three"], meta={"judge_score": 1.0}
+    )
+    cand_b = SimpleNamespace(
+        id="B", sections=["solve by step one two three"], meta={"judge_score": 1.0}
+    )
+    cand_c = SimpleNamespace(
+        id="C", sections=["completely different answer path"], meta={"judge_score": 1.0}
+    )
     scored = [cand_a, cand_b, cand_c]
 
     texts = ["\n".join(c.sections) for c in scored]

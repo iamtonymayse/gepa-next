@@ -6,8 +6,10 @@ def reload_engine(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "x")
     monkeypatch.setenv("OPENAI_API_KEY", "y")
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.domain.engine as engine
+
     importlib.reload(engine)
     return engine
 
