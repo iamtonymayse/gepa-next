@@ -61,6 +61,7 @@ def snapshot_metrics_text() -> str:
     for key, value in data.items():
         if isinstance(value, (int, float)):
             lines.append(f"# HELP {key} {key}")
-            lines.append(f"# TYPE {key} counter")
+            mtype = "gauge" if key == "sse_clients" else "counter"
+            lines.append(f"# TYPE {key} {mtype}")
             lines.append(f"{key} {value}")
     return "\n".join(lines) + "\n"

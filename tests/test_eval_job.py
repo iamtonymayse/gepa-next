@@ -6,6 +6,7 @@ def app_client(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
     monkeypatch.setenv("USE_MODEL_STUB", "true")
     monkeypatch.setenv("REQUIRE_AUTH", "false")
+    monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     import innerloop.settings as settings
     importlib.reload(settings)
     import innerloop.main as main
@@ -22,13 +23,17 @@ def test_eval_flow(monkeypatch):
                 {"input": "great", "expected": "pos"},
                 {"input": "bad", "expected": "neg"},
             ],
+            headers={"Authorization": "Bearer token"},
         )
         job = c.post(
             "/v1/eval/start",
             json={"name": "baseline", "max_examples": 2, "seed": 7},
+            headers={"Authorization": "Bearer token"},
         ).json()["job_id"]
         events = set()
-        with c.stream("GET", f"/v1/eval/{job}/events") as s:
+        with c.stream(
+            "GET", f"/v1/eval/{job}/events", headers={"Authorization": "Bearer token"}
+        ) as s:
             it = s.iter_lines()
             next(it)
             for ln in it:

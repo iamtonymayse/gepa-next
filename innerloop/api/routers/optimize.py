@@ -97,12 +97,19 @@ async def cancel_job_endpoint(request: Request, job_id: str):
         )
     request.state.job_id = job_id
     await registry.cancel_job(job_id)
+    # Re-read after mutation to avoid returning a stale reference. If the job
+    # task was running, give the event loop a moment to process the cancellation
+    # so that the status reflects "cancelled".
+    j = registry.jobs.get(job_id) or job
+    if j.status == JobStatus.RUNNING:
+        await asyncio.sleep(0)
+        j = registry.jobs.get(job_id) or j
     return JobState(
         job_id=job_id,
-        status=job.status.value,
-        created_at=job.created_at,
-        updated_at=job.updated_at,
-        result=job.result,
+        status=j.status.value,
+        created_at=j.created_at,
+        updated_at=j.updated_at,
+        result=j.result,
     )
 
 
@@ -164,7 +171,7 @@ async def optimize_events(request: Request, job_id: str) -> StreamingResponse:
             inc("sse_clients", -1)
 
     headers = {
-        "Cache-Control": "no-store",
+        "Cache-Control": "no-cache",
         "Connection": "keep-alive",
         "X-Accel-Buffering": "no",
     }

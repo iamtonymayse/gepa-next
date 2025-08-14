@@ -36,17 +36,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
         ):
             return await call_next(request)
 
-        # Bypass ONLY for POST /optimize (and /v1/optimize) when OPENROUTER_API_KEY set and no Authorization.
-        # GET/DELETE/SSE and all other routes (incl. admin) must require bearer auth.
+        # Dev-only: allow unauthenticated POST /optimize when OPENROUTER_API_KEY is
+        # set and REQUIRE_AUTH is false. In production (REQUIRE_AUTH=true) this path
+        # must NOT bypass authentication. GET/DELETE/SSE and all other routes always
+        # require bearer auth.
         if (
-            request.method == "POST"
+            not settings.REQUIRE_AUTH
+            and request.method == "POST"
             and path in {"/optimize", "/v1/optimize"}
             and settings.OPENROUTER_API_KEY
             and "authorization" not in request.headers
         ):
-            return await call_next(request)
-
-        if not settings.REQUIRE_AUTH:
             return await call_next(request)
 
         auth_header = request.headers.get("authorization")
