@@ -24,7 +24,9 @@ def main() -> None:
     args = parser.parse_args()
     if args.dev:
         os.environ.setdefault("REQUIRE_AUTH", "false")
-    uvicorn.run("innerloop.main:app", host=args.host, port=args.port, reload=args.reload)
+    uvicorn.run(
+        "innerloop.main:app", host=args.host, port=args.port, reload=args.reload
+    )
 
 
 if __name__ == "__main__":

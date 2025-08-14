@@ -1,8 +1,8 @@
 import importlib
 import json
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 
 def create_client(monkeypatch, **env):
@@ -12,8 +12,10 @@ def create_client(monkeypatch, **env):
         else:
             monkeypatch.setenv(k, str(v))
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     return TestClient(main.app), settings
 
@@ -36,17 +38,27 @@ def test_sse_headers(monkeypatch):
 
 def test_auth_matrix(monkeypatch):
     # No auth -> 401
-    client, _ = create_client(monkeypatch, API_BEARER_TOKENS='["token1"]', OPENROUTER_API_KEY=None)
+    client, _ = create_client(
+        monkeypatch, API_BEARER_TOKENS='["token1"]', OPENROUTER_API_KEY=None
+    )
     with client:
         resp = client.post("/optimize", json={"prompt": "hi"})
         assert resp.status_code == 401
     # Bearer token -> 200
-    client, _ = create_client(monkeypatch, API_BEARER_TOKENS='["token1"]', OPENROUTER_API_KEY=None)
+    client, _ = create_client(
+        monkeypatch, API_BEARER_TOKENS='["token1"]', OPENROUTER_API_KEY=None
+    )
     with client:
-        resp = client.post("/optimize", json={"prompt": "hi"}, headers={"Authorization": "Bearer token1"})
+        resp = client.post(
+            "/optimize",
+            json={"prompt": "hi"},
+            headers={"Authorization": "Bearer token1"},
+        )
         assert resp.status_code == 200
     # Bypass via OPENROUTER_API_KEY
-    client, _ = create_client(monkeypatch, OPENROUTER_API_KEY="dev", API_BEARER_TOKENS=None)
+    client, _ = create_client(
+        monkeypatch, OPENROUTER_API_KEY="dev", API_BEARER_TOKENS=None
+    )
     with client:
         resp = client.post("/optimize", json={"prompt": "hi"})
         assert resp.status_code == 200
@@ -57,8 +69,14 @@ def test_token_compare(monkeypatch):
         monkeypatch, API_BEARER_TOKENS='["token1","token2"]', OPENROUTER_API_KEY=None
     )
     with client:
-        ok = client.post("/optimize", json={"prompt": "hi"}, headers={"Authorization": "Bearer token1"})
-        bad = client.post("/optimize", json={"prompt": "hi"}, headers={"Authorization": "Bearer nope"})
+        ok = client.post(
+            "/optimize",
+            json={"prompt": "hi"},
+            headers={"Authorization": "Bearer token1"},
+        )
+        bad = client.post(
+            "/optimize", json={"prompt": "hi"}, headers={"Authorization": "Bearer nope"}
+        )
         assert ok.status_code == 200
         assert bad.status_code == 401
 
@@ -69,10 +87,16 @@ def test_iterations_clamp(monkeypatch):
         monkeypatch, OPENROUTER_API_KEY="dev", API_BEARER_TOKENS='["token"]'
     )
     with client:
-        resp = client.post("/optimize", json={"prompt": "hi"}, params={"iterations": 9999})
+        resp = client.post(
+            "/optimize",
+            json={"prompt": "hi"},
+            params={"iterations": 9999},
+        )
         job_id = resp.json()["job_id"]
         with client.stream(
-            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+            "GET",
+            f"/optimize/{job_id}/events",
+            headers={"Authorization": "Bearer token"},
         ) as stream:
             line_iter = stream.iter_lines()
             progress = 0
@@ -88,7 +112,11 @@ def test_iterations_clamp(monkeypatch):
 
 
 def test_request_size_limit(monkeypatch):
-    client, _ = create_client(monkeypatch, OPENROUTER_API_KEY="dev", MAX_REQUEST_BYTES=10)
+    client, _ = create_client(
+        monkeypatch,
+        OPENROUTER_API_KEY="dev",
+        MAX_REQUEST_BYTES=10,
+    )
     with client:
         resp = client.post("/optimize", json={"prompt": "x" * 50})
         assert resp.status_code == 413
@@ -102,7 +130,10 @@ def test_rate_limit(monkeypatch):
         RATE_LIMIT_OPTIMIZE_BURST=2,
     )
     with client:
-        statuses = [client.post("/optimize", json={"prompt": "hi"}).status_code for _ in range(10)]
+        statuses = [
+            client.post("/optimize", json={"prompt": "hi"}).status_code
+            for _ in range(10)
+        ]
         assert any(code == 429 for code in statuses)
 
 
@@ -129,7 +160,9 @@ def test_walltime_deadline(monkeypatch):
         )
         job_id = resp.json()["job_id"]
         with client.stream(
-            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+            "GET",
+            f"/optimize/{job_id}/events",
+            headers={"Authorization": "Bearer token"},
         ) as stream:
             line_iter = stream.iter_lines()
             next(line_iter)

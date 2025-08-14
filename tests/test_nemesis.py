@@ -2,8 +2,8 @@ import importlib
 import json
 import time
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 
 @pytest.mark.timeout(5)
@@ -73,4 +73,7 @@ def test_stalled_consumer_triggers_backpressure(monkeypatch):
             time.sleep(0.7)  # stall reading to overflow queue
             lines = [ln for ln in stream.iter_lines() if ln.startswith("data:")]
     terminals = [json.loads(ln[5:].strip()) for ln in lines]
-    assert any(env["type"] == "failed" and env["data"].get("error") == "sse_backpressure" for env in terminals)
+    assert any(
+        env["type"] == "failed" and env["data"].get("error") == "sse_backpressure"
+        for env in terminals
+    )

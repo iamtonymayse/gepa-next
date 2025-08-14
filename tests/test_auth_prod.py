@@ -8,8 +8,10 @@ def _mkapp(monkeypatch, require_auth: bool):
     monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     monkeypatch.setenv("REQUIRE_AUTH", "true" if require_auth else "false")
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     return main.app
 
