@@ -7,7 +7,7 @@ from innerloop.evolution.scoring import (
 
 
 def test_normalize_and_composite_bounds() -> None:
-    j = {"brevity": 10, "diversity": 8, "coverage": 7}
+    j = {"brevity": 10.0, "diversity": 8.0, "coverage": 7.0}
     jn = normalize_judge(j)
     assert all(0.0 <= v <= 1.0 for v in jn.values())
     # clamp should bound values to [0,1]
