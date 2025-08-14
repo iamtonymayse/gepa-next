@@ -35,7 +35,13 @@ def regex_pass(pred: str, pattern: str) -> float:
     return 1.0 if re.search(pattern, pred) else 0.0
 
 
-async def evaluate_batch(provider, candidate_prompt: str, examples: Sequence[Example], settings) -> RolloutResult:
+async def evaluate_batch(
+    provider,
+    candidate_prompt: str,
+    examples: Sequence[Example],
+    settings,
+    model: str | None = None,
+) -> RolloutResult:
     key_src = candidate_prompt + "|".join(e.input + e.output for e in examples)
     key = hashlib.sha256(key_src.encode()).hexdigest()
     cached = _CACHE.get(key)
@@ -49,7 +55,10 @@ async def evaluate_batch(provider, candidate_prompt: str, examples: Sequence[Exa
     for ex in examples:
         prompt = f"{candidate_prompt} {ex.input}".strip()
         try:
-            output = await provider.complete(prompt)
+            output = await provider.complete(
+                prompt,
+                model=model or getattr(settings, "TARGET_MODEL_DEFAULT", None),
+            )
         except Exception:
             output = ""
         score = exact_match(output, ex.output)
