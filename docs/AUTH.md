@@ -2,7 +2,7 @@
 
 Use shared bearer tokens in development (list):
 ```
-Authorization: Bearer ${API_TOKEN}
+Authorization: Bearer ${API_TOKEN}  # gitleaks:allow (docs example; placeholder token)
 ```
 
 Set `API_BEARER_TOKENS` (JSON list) in `.env`, e.g.:

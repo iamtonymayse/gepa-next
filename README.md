@@ -29,7 +29,7 @@ python -m innerloop --dev
 ```bash
 curl -s -X POST "http://127.0.0.1:8000/v1/optimize?iterations=5" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${API_TOKEN}" \
+  -H "Authorization: Bearer ${API_TOKEN}" \  # gitleaks:allow (docs example; placeholder token)
   -d '{
         "prompt": "You are an assistant that writes helpful answers.",
         "target_model_id": "openai/gpt-5-mini",
@@ -43,7 +43,7 @@ Then stream progress:
 
 ```bash
 curl -N "http://127.0.0.1:8000/v1/optimize/$JOB_ID/events" \
-  -H "Authorization: Bearer ${API_TOKEN}"
+  -H "Authorization: Bearer ${API_TOKEN}"   # gitleaks:allow (docs example; placeholder token)
 ```
 
 Events are standard SSE. Example envelope:
@@ -67,7 +67,7 @@ Supports `Last-Event-ID` for resume and sends periodic `:\n\n` heartbeats.
 - GET /v1/metrics — Prometheus text metrics
 
 ## Auth
-Set `API_BEARER_TOKENS=["token1","token2"]` in `.env` and send `Authorization: Bearer ${API_TOKEN}`.
+Set `API_BEARER_TOKENS=["token1","token2"]` in `.env` and send `Authorization: Bearer ${API_TOKEN}`. <!-- gitleaks:allow (docs example; placeholder token) -->
 Dev bypass for unauthenticated POST /optimize is enabled only with `python -m innerloop --dev` or `REQUIRE_AUTH=false`.
 
 ## Metrics
