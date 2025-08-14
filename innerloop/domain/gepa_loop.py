@@ -8,6 +8,7 @@ from ..settings import get_settings
 from .candidate import Candidate, apply_edits
 from .engine import get_target_provider
 from .eval import evaluate_batch
+from .judge import judge_scores
 from .examples import load_pack
 from .operators import OPERATORS
 from .optimize_engine import pareto_filter
@@ -39,8 +40,16 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
     for gen in range(max_gens):
         await emit(job, "generation_started", {"gen": gen, "population_size": len(population)})
         scored: List[Candidate] = []
+        target_model = payload.get("target_model")
+        examples_dicts = [{"input": ex.input, "expected": ex.output, **ex.meta} for ex in pack.examples]
         for cand in population:
-            res = await evaluate_batch(provider, "\n".join(cand.sections), pack.examples, settings)
+            res = await evaluate_batch(
+                provider,
+                "\n".join(cand.sections),
+                pack.examples,
+                settings,
+                model=target_model,
+            )
             rollouts += 1
             cand.meta.update(
                 score=res.mean_scores.get("exact_match", 0.0),
@@ -58,8 +67,28 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
                     "len": cand.meta["length"],
                 },
             )
+            try:
+                jres = await judge_scores(
+                    prompt=str(payload.get("prompt", "")),
+                    candidate="\n".join(cand.sections),
+                    examples=examples_dicts,
+                    objectives=None,
+                )
+                vals = list((jres.get("scores") or {}).values())
+                cand.meta["judge_score"] = sum(vals) / (10.0 * len(vals)) if vals else 0.0
+            except Exception:
+                cand.meta["judge_score"] = 0.0
+            await emit(job, "judge_scored", {"id": cand.id, "judge_score": cand.meta["judge_score"]})
             scored.append(cand)
-        frontier = pareto_filter(scored, objectives=None, n=len(scored))
+        objectives = [
+            lambda c: -c.meta.get("score", 0.0),
+            lambda c: c.meta.get("length", 0.0),
+            lambda c: c.meta.get("cost", 0.0),
+            lambda c: c.meta.get("latency", 0.0),
+            lambda c: -c.meta.get("judge_score", 0.0),
+        ]
+        frontier = pareto_filter(scored, objectives=objectives, n=len(scored))
+        frontier.sort(key=lambda c: c.meta.get("judge_score", 0.0), reverse=True)
         best = frontier[0]
         await emit(
             job,
