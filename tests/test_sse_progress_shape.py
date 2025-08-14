@@ -21,7 +21,7 @@ def test_sse_progress_has_delta_and_finished_reason(monkeypatch) -> None:
             headers={"Authorization": "Bearer token"},
             params={"iterations": 2},
         )
-        assert r.status_code == 200
+        assert r.status_code == 200  # nosec B101
         job_id = r.json()["job_id"]
 
         got_delta = False
@@ -34,7 +34,7 @@ def test_sse_progress_has_delta_and_finished_reason(monkeypatch) -> None:
         ) as stream:
             line_iter = stream.iter_lines()
             first = next(line_iter)
-            assert first.startswith("retry:")
+            assert first.startswith("retry:")  # nosec B101
             for line in line_iter:
                 if not line:
                     continue
@@ -46,4 +46,4 @@ def test_sse_progress_has_delta_and_finished_reason(monkeypatch) -> None:
                         finished_seen = True
                         break
 
-        assert got_delta and finished_seen
+        assert got_delta and finished_seen  # nosec B101
