@@ -1,15 +1,15 @@
 # Authentication (Bearer)
 
-Use a shared bearer token in development:
+Use shared bearer tokens in development (list):
 ```
-Authorization: Bearer <token>
+Authorization: Bearer ${API_TOKEN}  # gitleaks:allow (docs example; placeholder token)
 ```
 
-Set `API_BEARER_TOKENS` to a JSON list of tokens and send one as the bearer. Requests without a valid bearer are rejected.
+Set `API_BEARER_TOKENS` (JSON list) in `.env`, e.g.:
+```
+API_BEARER_TOKENS=["<token-1>","<token-2>"]
+```
 
-Example:
-```
-API_BEARER_TOKENS=["secret123","another-token"]
-```
+Requests without a valid bearer are rejected unless developer mode is enabled (`python -m innerloop --dev`).
 
 > **Planned**: Production-ready auth (OAuth/OIDC/JWT) is on the roadmap. The dev bearer is a temporary convenience.

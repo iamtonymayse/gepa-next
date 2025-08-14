@@ -1,0 +1,18 @@
+title = "gepa-next gitleaks configuration"
+
+# This configuration allows placeholder Authorization headers in documentation
+# so that gitleaks does not flag them as secrets. Real secrets remain
+# disallowed. Adjust CI to point to this file if not autodetected.
+
+[allowlist]
+description = "Allow Authorization header placeholders in docs"
+paths = [
+  "^README.md$",
+  "^USAGE.md$",
+  "^docs/.*$",
+]
+regexes = [
+  "Authorization:\\sBearer\\s\\$\\{?API_[A-Z0-9_]*\\}?",
+  "Authorization:\\sBearer\\s<token>",
+  "Authorization:\\sBearer\\s\\*{3}",
+]
