@@ -35,4 +35,3 @@ def test_authorization_header_redacted(monkeypatch, caplog):
                 assert val == "REDACTED"
                 redacted_seen = True
     assert redacted_seen, "no Authorization header captured on record"
-

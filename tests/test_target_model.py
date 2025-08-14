@@ -8,8 +8,10 @@ def test_target_model_roundtrip(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
     monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     with TestClient(main.app) as client:
         r = client.post(
@@ -46,8 +48,10 @@ def test_target_model_default(monkeypatch):
     monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     monkeypatch.setenv("TARGET_MODEL_DEFAULT", "default-model")
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     with TestClient(main.app) as client:
         job_id = client.post("/v1/optimize", json={"prompt": "hello"}).json()["job_id"]
@@ -64,4 +68,3 @@ def test_target_model_default(monkeypatch):
             headers={"Authorization": "Bearer token"},
         ).json()
         assert state["result"]["target_model"] == "default-model"
-

@@ -7,12 +7,16 @@ def test_perf_budgets(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
     monkeypatch.setenv("GEPA_DETERMINISTIC", "true")
     import innerloop.settings as settings
+
     importlib.reload(settings)
     s = settings.get_settings()
     import innerloop.main as main
+
     importlib.reload(main)
     with TestClient(main.app) as client:
-        job_id = client.post("/v1/optimize", json={"prompt":"x"}, params={"iterations":2}).json()["job_id"]
+        job_id = client.post(
+            "/v1/optimize", json={"prompt": "x"}, params={"iterations": 2}
+        ).json()["job_id"]
         with client.stream("GET", f"/v1/optimize/{job_id}/events") as stream:
             for line in stream.iter_lines():
                 if line.startswith("event: finished"):

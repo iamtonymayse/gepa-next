@@ -1,17 +1,19 @@
-import importlib
 import asyncio
+import importlib
 import json
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 
 def test_judge_based_selection(monkeypatch):
     monkeypatch.setenv("USE_JUDGE_STUB", "true")
     monkeypatch.setenv("ENABLE_PARETO_V2", "true")
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.domain.optimize_engine as oe
+
     importlib.reload(oe)
     proposals = ["longer proposal here", "short"]
     best = asyncio.run(
@@ -27,10 +29,13 @@ def test_rubric_and_target_propagation_in_stream(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
     monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.api.models as api_models
+
     importlib.reload(api_models)
     import innerloop.main as main
+
     importlib.reload(main)
     with TestClient(main.app) as client:
         r = client.post(

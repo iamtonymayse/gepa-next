@@ -1,9 +1,12 @@
 from __future__ import annotations
-from typing import Dict, List, Any
+
 import math
+from typing import Any, Dict, List
 
 from ..settings import get_settings
+
 _idf: Dict[str, float] | None = None
+
 
 def _tokenize(text: str) -> List[str]:
     return text.split()
@@ -22,7 +25,9 @@ def _build_idf(examples: List[Dict[str, Any]]) -> None:
     _idf = {t: math.log(total / (1 + c)) for t, c in df.items()}
 
 
-async def retrieve(query: str, k: int, store: Any | None = None) -> List[Dict[str, Any]]:
+async def retrieve(
+    query: str, k: int, store: Any | None = None
+) -> List[Dict[str, Any]]:
     k = max(0, min(k, get_settings().RETRIEVAL_MAX_EXAMPLES))
     examples: List[Dict[str, Any]] = []
     if store is not None:

@@ -21,9 +21,12 @@ def test_backpressure_failure(monkeypatch):
     importlib.reload(main)
     with TestClient(main.app) as client:
         headers = {"Authorization": "Bearer token"}
-        job_id = client.post("/v1/optimize", json={"prompt": "hi"}, params={"iterations": 2}, headers=headers).json()[
-            "job_id"
-        ]
+        job_id = client.post(
+            "/v1/optimize",
+            json={"prompt": "hi"},
+            params={"iterations": 2},
+            headers=headers,
+        ).json()["job_id"]
 
         # Never open the SSE stream; queue fills and job should fail
         deadline = time.time() + 3

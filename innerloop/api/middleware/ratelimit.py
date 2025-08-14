@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import time
-import uuid
 from typing import Callable, Dict, Tuple
+import uuid
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ...settings import get_settings
-from ..models import ErrorCode, error_response
 from ..metrics import inc
+from ..models import ErrorCode, error_response
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -19,7 +19,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self._buckets: Dict[str, Tuple[float, float]] = {}
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Response]
+    ) -> Response:
         path = request.url.path
         if not (request.method == "POST" and path in {"/optimize", "/v1/optimize"}):
             return await call_next(request)
@@ -29,7 +31,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         burst = settings.RATE_LIMIT_BURST
 
         request_id = getattr(
-            request.state, "request_id", request.headers.get("x-request-id") or str(uuid.uuid4())
+            request.state,
+            "request_id",
+            request.headers.get("x-request-id") or str(uuid.uuid4()),
         )
         request.state.request_id = request_id
 

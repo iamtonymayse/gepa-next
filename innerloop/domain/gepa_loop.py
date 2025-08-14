@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import random
 import re
-from dataclasses import dataclass
 from typing import Any, Dict, List, Sequence, cast
 
 from ..settings import get_settings
@@ -54,17 +54,24 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
     budget = Budget(**cast(Dict[str, Any], payload.get("budget", {})))
     max_gens = budget.max_generations or 1
     prompt = str(payload.get("prompt", ""))
-    population: List[Candidate] = [Candidate(id="seed", sections=[prompt], examples_subset=None, meta={})]
+    population: List[Candidate] = [
+        Candidate(id="seed", sections=[prompt], examples_subset=None, meta={})
+    ]
     lessons: List[str] = []
     frontier: List[Candidate] = []
     rollouts = 0
     best_score = None
     stagnation = 0
     for gen in range(max_gens):
-        await emit(job, "generation_started", {"gen": gen, "population_size": len(population)})
+        await emit(
+            job, "generation_started", {"gen": gen, "population_size": len(population)}
+        )
         scored: List[Candidate] = []
         target_model = payload.get("target_model")
-        examples_dicts = [{"input": ex.input, "expected": ex.output, **ex.meta} for ex in pack.examples]
+        examples_dicts = [
+            {"input": ex.input, "expected": ex.output, **ex.meta}
+            for ex in pack.examples
+        ]
         for cand in population:
             res = await evaluate_batch(
                 provider,
@@ -98,7 +105,9 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
                     objectives=None,
                 )
                 vals = list((jres.get("scores") or {}).values())
-                cand.meta["judge_score"] = sum(vals) / (10.0 * len(vals)) if vals else 0.0
+                cand.meta["judge_score"] = (
+                    sum(vals) / (10.0 * len(vals)) if vals else 0.0
+                )
             except Exception:
                 cand.meta["judge_score"] = 0.0
             await emit(
@@ -160,7 +169,10 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
         await emit(job, "reflection_started", {"gen": gen})
 
         # Build a plain dict view of examples for prompts
-        ex_dicts = [{"input": ex.input, "expected": ex.output, **ex.meta} for ex in pack.examples]
+        ex_dicts = [
+            {"input": ex.input, "expected": ex.output, **ex.meta}
+            for ex in pack.examples
+        ]
         base_text = "\n".join(best.sections)
 
         # Author drafts an improved prompt
@@ -204,10 +216,14 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
         for r in (author, reviewer, planner, revision):
             new_lessons.extend(cast(List[str], r.get("lessons", [])))
         lessons = update_lessons_journal(lessons, new_lessons)
-        await emit(job, "lessons_updated", {"count": len(lessons), "sample": lessons[:3]})
+        await emit(
+            job, "lessons_updated", {"count": len(lessons), "sample": lessons[:3]}
+        )
 
         # Apply revision edits to the best candidate to form next population seed
-        edited = apply_edits(best, cast(Sequence[Dict[str, Any]], revision.get("edits", [])))
+        edited = apply_edits(
+            best, cast(Sequence[Dict[str, Any]], revision.get("edits", []))
+        )
 
         await emit(job, "reflection_finished", {"gen": gen})
 
@@ -225,7 +241,9 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
         if stagnation >= 2:
             break
     return {
-        "best_prompt": ("\n".join(frontier[0].sections) if frontier else payload.get("prompt", "")),
+        "best_prompt": (
+            "\n".join(frontier[0].sections) if frontier else payload.get("prompt", "")
+        ),
         "frontier": [{"id": c.id, "score": c.meta.get("score", 0.0)} for c in frontier],
         "lessons": lessons,
     }

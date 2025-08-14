@@ -41,4 +41,6 @@ def error_response(
     hdrs = headers.copy() if headers else {}
     if request_id:
         hdrs.setdefault("X-Request-ID", request_id)
-    return JSONResponse({"error": err.model_dump()}, status_code=status_code, headers=hdrs)
+    return JSONResponse(
+        {"error": err.model_dump()}, status_code=status_code, headers=hdrs
+    )

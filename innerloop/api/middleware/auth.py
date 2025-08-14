@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable
 import hmac
+from typing import Callable
 import uuid
 
 from fastapi import Request, Response
@@ -12,12 +12,16 @@ from ..models import ErrorCode, error_response
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Response]
+    ) -> Response:
         settings = get_settings()
         path = request.url.path
 
         request_id = getattr(
-            request.state, "request_id", request.headers.get("x-request-id") or str(uuid.uuid4())
+            request.state,
+            "request_id",
+            request.headers.get("x-request-id") or str(uuid.uuid4()),
         )
         request.state.request_id = request_id
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 from collections import deque
+import json
 from typing import TYPE_CHECKING, Dict, List, Optional, Protocol, Tuple
 
 try:  # pragma: no cover - aiosqlite optional
@@ -30,7 +30,9 @@ class JobStore(Protocol):
 
     async def save_idempotency(self, key: str, job_id: str, ts: float) -> None: ...
 
-    async def get_idempotent(self, key: str, now: float, ttl: float) -> Optional[str]: ...
+    async def get_idempotent(
+        self, key: str, now: float, ttl: float
+    ) -> Optional[str]: ...
 
     async def upsert_examples(self, items: List[dict]) -> int: ...
 
@@ -207,7 +209,11 @@ class SQLiteJobStore:
                 job.status.value,
                 job.created_at,
                 job.updated_at,
-                json.dumps(job.result, separators=(",",":")) if job.result is not None else None,
+                (
+                    json.dumps(job.result, separators=(",", ":"))
+                    if job.result is not None
+                    else None
+                ),
             ),
         )
         await self.db.commit()
@@ -255,7 +261,7 @@ class SQLiteJobStore:
     async def save_event(self, job_id: str, event_id: int, envelope: dict) -> None:
         await self.db.execute(
             "INSERT OR REPLACE INTO events(job_id, id, envelope) VALUES(?,?,?)",
-            (job_id, event_id, json.dumps(envelope, separators=(",",":"))),
+            (job_id, event_id, json.dumps(envelope, separators=(",", ":"))),
         )
         cutoff = event_id - self.buffer_size
         if cutoff > 0:
@@ -287,6 +293,7 @@ class SQLiteJobStore:
         if row and now - row[1] < ttl:
             return row[0]
         return None
+
     async def upsert_examples(self, items: List[dict]) -> int:
         for it in items:
             await self.db.execute(

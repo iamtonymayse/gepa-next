@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Callable, List, Sequence, TypeVar
 
-from .judge import judge_pair, get_judge
 from ..settings import get_settings
+from .judge import get_judge, judge_pair
 from .recombination import recombine
 
 T = TypeVar("T")

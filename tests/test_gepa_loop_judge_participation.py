@@ -12,7 +12,9 @@ def test_gepa_includes_judge_axis(monkeypatch):
 
     monkeypatch.setattr(gepa_loop, "judge_scores", fake_judge_scores)
 
-    async def fake_evaluate_batch(provider, candidate_prompt, examples, settings, model=None):
+    async def fake_evaluate_batch(
+        provider, candidate_prompt, examples, settings, model=None
+    ):
         class Res:
             mean_scores = {"exact_match": 1.0}
             cost = 0.0
@@ -27,7 +29,9 @@ def test_gepa_includes_judge_axis(monkeypatch):
         return {}
 
     monkeypatch.setattr(gepa_loop, "run_reflection", fake_run_reflection)
-    monkeypatch.setattr(gepa_loop, "update_lessons_journal", lambda lessons, new: lessons)
+    monkeypatch.setattr(
+        gepa_loop, "update_lessons_journal", lambda lessons, new: lessons
+    )
     monkeypatch.setattr(gepa_loop, "apply_edits", lambda c, edits: c)
     monkeypatch.setattr(gepa_loop, "OPERATORS", {"reorder_sections": lambda c, rng: c})
 
@@ -42,7 +46,11 @@ def test_gepa_includes_judge_axis(monkeypatch):
     async def emit(job, event, data):
         pass
 
-    payload = {"prompt": "hello", "dataset": {"name": "toy_qa"}, "budget": {"max_generations": 1}}
+    payload = {
+        "prompt": "hello",
+        "dataset": {"name": "toy_qa"},
+        "budget": {"max_generations": 1},
+    }
 
     async def main():
         await gepa_loop.gepa_loop(job=None, emit=emit, payload=payload)

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 from dataclasses import dataclass
+import hashlib
 from typing import Dict, Sequence
 
 from .examples import Example

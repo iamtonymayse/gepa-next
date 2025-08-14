@@ -1,8 +1,8 @@
 import importlib
 import time
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 
 @pytest.mark.parametrize("store", ["memory", "sqlite"])
@@ -13,8 +13,10 @@ def test_persistence_across_reload(monkeypatch, tmp_path, store):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test")
     monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     with TestClient(main.app) as client:
         headers = {"Idempotency-Key": "abc"}
@@ -39,7 +41,9 @@ def test_persistence_across_reload(monkeypatch, tmp_path, store):
     with TestClient(main.app) as client2:
         if store == "sqlite":
             with client2.stream(
-                "GET", f"/v1/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+                "GET",
+                f"/v1/optimize/{job_id}/events",
+                headers={"Authorization": "Bearer token"},
             ) as stream:
                 lines = stream.iter_lines()
                 next(lines)

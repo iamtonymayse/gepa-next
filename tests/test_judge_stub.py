@@ -1,5 +1,5 @@
-import importlib
 import asyncio
+import importlib
 
 from innerloop.domain.judge import get_judge
 import innerloop.settings as settings
@@ -15,4 +15,3 @@ def test_judge_stub_ranking(monkeypatch):
     items = [p for p, _ in ranked]
     assert set(items) == set(proposals)
     assert items[0] in {"short good", "mid"}
-

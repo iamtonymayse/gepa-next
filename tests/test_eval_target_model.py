@@ -32,7 +32,9 @@ def test_evaluate_batch_threads_model():
 def test_gepa_uses_request_target_model(monkeypatch):
     seen = {"model": None}
 
-    async def fake_evaluate_batch(provider, candidate_prompt, examples, settings, model=None):
+    async def fake_evaluate_batch(
+        provider, candidate_prompt, examples, settings, model=None
+    ):
         seen["model"] = model
 
         class Res:
@@ -49,10 +51,14 @@ def test_gepa_uses_request_target_model(monkeypatch):
         return {}
 
     monkeypatch.setattr(gepa_loop, "run_reflection", fake_run_reflection)
-    monkeypatch.setattr(gepa_loop, "update_lessons_journal", lambda lessons, new: lessons)
+    monkeypatch.setattr(
+        gepa_loop, "update_lessons_journal", lambda lessons, new: lessons
+    )
     monkeypatch.setattr(gepa_loop, "apply_edits", lambda c, edits: c)
     monkeypatch.setattr(gepa_loop, "OPERATORS", {"reorder_sections": lambda c, rng: c})
-    monkeypatch.setattr(gepa_loop, "pareto_filter", lambda items, objectives=None, n=1: list(items))
+    monkeypatch.setattr(
+        gepa_loop, "pareto_filter", lambda items, objectives=None, n=1: list(items)
+    )
 
     async def fake_judge_scores(prompt, candidate, examples, objectives):
         return {"scores": {"overall": 8}}

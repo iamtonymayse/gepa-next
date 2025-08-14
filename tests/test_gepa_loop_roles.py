@@ -1,4 +1,5 @@
 import importlib
+
 from fastapi.testclient import TestClient
 import pytest
 
@@ -10,8 +11,10 @@ def test_gepa_loop_roles_and_lessons_sse(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     with TestClient(main.app) as client:
         # Start GEPA-mode optimize job
@@ -28,7 +31,9 @@ def test_gepa_loop_roles_and_lessons_sse(monkeypatch):
         job_id = resp.json()["job_id"]
         events = []
         with client.stream(
-            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+            "GET",
+            f"/optimize/{job_id}/events",
+            headers={"Authorization": "Bearer token"},
         ) as stream:
             for line in stream.iter_lines():
                 if not line:
@@ -47,4 +52,3 @@ def test_gepa_loop_roles_and_lessons_sse(monkeypatch):
         assert "reflection_started" in events
         assert "lessons_updated" in events
         assert "reflection_finished" in events
-

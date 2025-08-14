@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import List
+
 import random
+from typing import List
 
 
 def _swap_words(text: str, rnd: random.Random) -> str:

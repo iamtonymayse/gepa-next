@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal
-
-from uuid import uuid4
 from enum import Enum
-from pydantic import BaseModel, Field, field_validator, AliasChoices
+from typing import Any, Dict, List, Literal
+from uuid import uuid4
+
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 
 class DatasetSpec(BaseModel):
@@ -115,9 +115,7 @@ class OptimizeRequest(BaseModel):
 class OptimizeResponse(BaseModel):
     job_id: str
 
-    model_config = {
-        "json_schema_extra": {"examples": [{"job_id": "123e4567"}]}
-    }
+    model_config = {"json_schema_extra": {"examples": [{"job_id": "123e4567"}]}}
 
 
 class JobState(BaseModel):
