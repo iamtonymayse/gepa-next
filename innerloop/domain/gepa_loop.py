@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Sequence, cast
 
@@ -14,6 +15,28 @@ from .operators import OPERATORS
 from .optimize_engine import pareto_filter
 from .reflection_multirole import update_lessons_journal
 from .reflection_runner import run_reflection
+
+
+def _shingles(text: str, k: int = 3) -> set[tuple[str, ...]]:
+    toks = re.findall(r"\w+", text.lower())
+    return set(tuple(toks[i : i + k]) for i in range(max(0, len(toks) - k + 1)))
+
+
+def _max_jaccard_3gram(cand_text: str, others_texts: List[str]) -> float:
+    s = _shingles(cand_text, 3)
+    if not s:
+        return 0.0
+    best = 0.0
+    for t in others_texts:
+        o = _shingles(t, 3)
+        if not o:
+            continue
+        inter = len(s & o)
+        union = len(s | o)
+        j = (inter / union) if union else 0.0
+        if j > best:
+            best = j
+    return best
 
 
 @dataclass
@@ -78,17 +101,35 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
                 cand.meta["judge_score"] = sum(vals) / (10.0 * len(vals)) if vals else 0.0
             except Exception:
                 cand.meta["judge_score"] = 0.0
-            await emit(job, "judge_scored", {"id": cand.id, "judge_score": cand.meta["judge_score"]})
+            await emit(
+                job,
+                "judge_scored",
+                {"id": cand.id, "judge_score": cand.meta["judge_score"]},
+            )
             scored.append(cand)
+        all_texts = ["\n".join(c.sections) for c in scored]
+        for i, cand in enumerate(scored):
+            max_j = _max_jaccard_3gram(all_texts[i], all_texts[:i] + all_texts[i + 1 :])
+            cand.meta["diversity"] = 1.0 - max_j
         objectives = [
             lambda c: -c.meta.get("score", 0.0),
             lambda c: c.meta.get("length", 0.0),
             lambda c: c.meta.get("cost", 0.0),
             lambda c: c.meta.get("latency", 0.0),
             lambda c: -c.meta.get("judge_score", 0.0),
+            lambda c: -c.meta.get("diversity", 0.0),
         ]
-        frontier = pareto_filter(scored, objectives=objectives, n=len(scored))
-        frontier.sort(key=lambda c: c.meta.get("judge_score", 0.0), reverse=True)
+        try:
+            frontier = pareto_filter(scored, objectives=objectives, n=len(scored))
+        except Exception:
+            frontier = pareto_filter(scored, objectives=None, n=len(scored))
+        frontier.sort(
+            key=lambda c: (
+                c.meta.get("judge_score", 0.0),
+                c.meta.get("diversity", 0.0),
+            ),
+            reverse=True,
+        )
         best = frontier[0]
         await emit(
             job,
@@ -100,6 +141,18 @@ async def gepa_loop(job, emit, payload: Dict[str, Any]) -> Dict[str, Any]:
                     "score": best.meta.get("score", 0.0),
                     "cost": best.meta.get("cost", 0.0),
                     "len": best.meta.get("length", 0.0),
+                },
+            },
+        )
+        await emit(
+            job,
+            "selected",
+            {
+                "id": best.id,
+                "meta": {
+                    "judge_score": best.meta.get("judge_score"),
+                    "diversity": best.meta.get("diversity"),
+                    "score": best.meta.get("score"),
                 },
             },
         )

@@ -129,7 +129,14 @@ async def judge_pair(task: str, a: str, b: str, store=None) -> Dict[str, Any]:
         provider = get_judge_provider(s)
         prompt = PAIRWISE_TEMPLATE.format(task=task, a=a, b=b)
         try:
-            out = await provider.complete(prompt, model=s.JUDGE_MODEL_ID)
+            complete_kwargs = {
+                "model": s.JUDGE_MODEL_ID,
+                "temperature": 0.0,
+                "max_tokens": 64,
+            }
+            if "seed" in getattr(provider, "SUPPORTED_KWARGS", ()):  # guard for providers w/ seed
+                complete_kwargs["seed"] = 0
+            out = await provider.complete(prompt=prompt, **complete_kwargs)
         except Exception:
             inc("judge_failures")
             winner = "A" if len(a) <= len(b) else "B"
@@ -163,7 +170,12 @@ async def judge(task: str, a: str, b: str, store=None) -> Dict[str, Any]:
     return await judge_pair(task, a, b, store)
 
 
-async def judge_score(prompt: str, candidate: str, examples: List[dict] | None, objectives: List[str] | None) -> float:
+async def judge_score(
+    prompt: str,
+    candidate: str,
+    examples: List[dict] | None,
+    objectives: List[str] | None,
+) -> float:
     res = await judge_scores(prompt, candidate, examples, objectives)
     return float(sum(res.get("scores", {}).values()))
 
