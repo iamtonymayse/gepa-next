@@ -2,9 +2,9 @@ import importlib
 
 import pytest
 
+import innerloop.settings as settings
 from innerloop.api import metrics
 from innerloop.domain import judge as dj
-import innerloop.settings as settings
 
 pytestmark = pytest.mark.anyio
 

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import logging
 from contextlib import suppress
 from typing import Dict, Optional, Protocol
 
 import httpx
-import logging
 
 from ..settings import Settings, get_settings
 
@@ -134,9 +134,7 @@ def get_judge_provider(settings: Optional[Settings] = None) -> ModelProvider:
             if getattr(settings, "ALLOW_JUDGE_FALLBACK", False):
                 logger.warning("OpenRouter judge missing OPENAI_API_KEY; falling back")
                 return LocalEchoProvider()
-            raise RuntimeError(
-                "JUDGE_PROVIDER=openrouter requires OPENAI_API_KEY for GPT-5 judge"
-            )
+            raise RuntimeError("JUDGE_PROVIDER=openrouter requires OPENAI_API_KEY for GPT-5 judge")
         if settings.OPENROUTER_API_KEY:
             extra = {"X-OpenAI-Api-Key": settings.OPENAI_API_KEY}
             if (
