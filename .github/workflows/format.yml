@@ -27,30 +27,35 @@ jobs:
         run: |
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.sha }}"
-          CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" -- '*.py' || true)
-          echo "$CHANGED" | tr '\n' ' ' > changed.txt
-          echo "changed=$(cat changed.txt)" >> "$GITHUB_OUTPUT"
-          echo "Changed Python files: $(cat changed.txt || true)"
+          # Get changed *.py files, may be empty. Produce a trimmed space-separated list.
+          CHANGED="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" -- '*.py' || true)"
+          # Replace newlines with spaces, then trim leading/trailing whitespace to avoid a lone space.
+          CHANGED="$(printf '%s' "$CHANGED" | tr '\n' ' ' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
+          echo "Changed Python files: ${CHANGED:-<none>}"
       - name: Black (check only on changed files)
         shell: bash
         run: |
           FILES="${{ steps.diff.outputs.changed }}"
-          if [ -z "$FILES" ]; then
+          # Trim again defensively; an empty or all-space string should skip checks.
+          FILES_TRIMMED="$(echo "$FILES" | xargs)"
+          if [ -z "$FILES_TRIMMED" ]; then
             echo "No Python file changes in this PR; skipping Black."
             exit 0
           fi
-          echo "Running Black on: $FILES"
-          black --check --diff $FILES
+          echo "Running Black on: $FILES_TRIMMED"
+          black --check --diff -- $FILES_TRIMMED
       - name: isort (check only on changed files)
         shell: bash
         run: |
           FILES="${{ steps.diff.outputs.changed }}"
-          if [ -z "$FILES" ]; then
+          FILES_TRIMMED="$(echo "$FILES" | xargs)"
+          if [ -z "$FILES_TRIMMED" ]; then
             echo "No Python file changes in this PR; skipping isort."
             exit 0
           fi
-          echo "Running isort on: $FILES"
-          isort --profile black --check-only --diff $FILES
+          echo "Running isort on: $FILES_TRIMMED"
+          isort --profile black --check-only --diff -- $FILES_TRIMMED
 
   format-fix:
     if: github.event_name != 'pull_request'
