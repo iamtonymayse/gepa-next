@@ -74,6 +74,19 @@ class Settings(BaseSettings):
     EVAL_MAX_EXAMPLES: int = 100
     EVAL_MAX_CONCURRENCY: int = 8
 
+    # Evolution defaults
+    EVOLVE_POP_SIZE: int = 8
+    EVOLVE_TOPK: int = 3
+    EVOLVE_PATIENCE: int = 2
+    EVOLVE_MIN_ITERS: int = 3
+    EVOLVE_MIN_IMPROVEMENT: float = 1e-3
+    EVOLVE_MIN_EDIT_NORM: float = 0.05
+    EVOLVE_BREVITY_TARGET: int = 600
+    EVOLVE_W_JUDGE: float = 0.6
+    EVOLVE_W_COVERAGE: float = 0.1
+    EVOLVE_W_DIVERSITY: float = 0.2
+    EVOLVE_W_BREVITY: float = 0.1
+
     @computed_field
     def MODEL_PRICES(self) -> dict[str, dict[str, float]]:  # noqa: N802
         try:
