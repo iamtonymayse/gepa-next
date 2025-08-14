@@ -21,6 +21,7 @@ def normalize_judge(judge: Dict[str, float], scale: float = 10.0) -> Dict[str, f
     """
     out: Dict[str, float] = {}
     for k, v in judge.items():
+        # Bandit B112: avoid "try/except/continue" by using contextlib.suppress
         with suppress(TypeError, ValueError):
             out[k] = clamp(float(v) / scale)
     return out
