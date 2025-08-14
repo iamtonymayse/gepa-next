@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -19,10 +21,25 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install black isort
-      - name: Black (check only)
-        run: black . --check --diff
-      - name: isort (check only)
-        run: isort . --profile black --check-only --diff
+      - name: Determine changed Python files
+        id: diff
+        shell: bash
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" -- '*.py' || true)
+          echo "$CHANGED" | tr '\n' ' ' > changed.txt
+          echo "changed=$(cat changed.txt)" >> "$GITHUB_OUTPUT"
+          echo "Changed Python files: $(cat changed.txt || true)"
+      - name: Black (check only on changed files)
+        if: steps.diff.outputs.changed != ''
+        run: black --check --diff ${{ steps.diff.outputs.changed }}
+      - name: isort (check only on changed files)
+        if: steps.diff.outputs.changed != ''
+        run: isort --profile black --check-only --diff ${{ steps.diff.outputs.changed }}
+      - name: No Python changes — skip format checks
+        if: steps.diff.outputs.changed == ''
+        run: echo "No Python file changes in this PR; skipping format checks."
 
   format-fix:
     if: github.event_name != 'pull_request'
