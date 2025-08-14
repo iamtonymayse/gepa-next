@@ -67,7 +67,7 @@ All events use this envelope (see docs/SSE.md):
 ### Create a job
 ```bash
 curl -s -X POST "http://127.0.0.1:8000/v1/optimize?iterations=6" \
-  -H "Authorization: Bearer dev-token" \
+  -H "Authorization: Bearer ${API_TOKEN}" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: demo-001" \
   -d '{
@@ -83,7 +83,7 @@ curl -s -X POST "http://127.0.0.1:8000/v1/optimize?iterations=6" \
 ### Stream progress (SSE)
 ```bash
 curl -N "http://127.0.0.1:8000/v1/optimize/$JOB_ID/events" \
-  -H "Authorization: Bearer dev-token"
+  -H "Authorization: Bearer ${API_TOKEN}"
 ```
 - Heartbeats (`:\n\n`) keep the connection warm.
 - Resume with `Last-Event-ID: ` to skip what you’ve already processed.
@@ -91,7 +91,7 @@ curl -N "http://127.0.0.1:8000/v1/optimize/$JOB_ID/events" \
 ### Get the result
 ```bash
 curl -s "http://127.0.0.1:8000/v1/optimize/$JOB_ID" \
-  -H "Authorization: Bearer dev-token" | jq .
+  -H "Authorization: Bearer ${API_TOKEN}" | jq .
 ```
 Response includes the champion prompt, a sketch of lessons, and basic scoring.
 
@@ -130,7 +130,7 @@ As reported by the GEPA paper, these ingredients together outperformed GRPO base
   - `examples` (array, optional) — [{ "input": "...", "ideal": "..." }].
   - `config` (object, optional) — evolution knobs (if exposed in this build).
 - Headers
-  - `Authorization: Bearer <token>` — required unless running with `--dev`.
+    - `Authorization: Bearer ${API_TOKEN}` — required unless running with `--dev`.
   - `Idempotency-Key: <opaque>` — dedupe protection for create.
 - SSE
   - `Content-Type: text/event-stream`, `Cache-Control: no-cache`, `X-Accel-Buffering: no`.

@@ -9,7 +9,7 @@ cp .env.example .env
 Key vars:
 - `LOG_LEVEL` (`DEBUG|INFO|WARNING|ERROR`) – verbosity.
 - `DEBUG_LOG_CONSOLE` (`true|false`) – force console logging.
-- `API_BEARER_TOKENS` – JSON list of bearer tokens. Send `Authorization: Bearer <token>`.
+- `API_BEARER_TOKENS` – JSON list of bearer tokens. Send `Authorization: Bearer ${API_TOKEN}`.
 - `HOST` – interface to bind; defaults to 127.0.0.1 (loopback).
 - `PORT` – port to bind; defaults to 8000.
 - `TARGET_MODEL_DEFAULT` – default target model when request omits `target_model_id`.
