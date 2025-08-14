@@ -32,14 +32,25 @@ jobs:
           echo "changed=$(cat changed.txt)" >> "$GITHUB_OUTPUT"
           echo "Changed Python files: $(cat changed.txt || true)"
       - name: Black (check only on changed files)
-        if: steps.diff.outputs.changed != ''
-        run: black --check --diff ${{ steps.diff.outputs.changed }}
+        shell: bash
+        run: |
+          FILES="${{ steps.diff.outputs.changed }}"
+          if [ -z "$FILES" ]; then
+            echo "No Python file changes in this PR; skipping Black."
+            exit 0
+          fi
+          echo "Running Black on: $FILES"
+          black --check --diff $FILES
       - name: isort (check only on changed files)
-        if: steps.diff.outputs.changed != ''
-        run: isort --profile black --check-only --diff ${{ steps.diff.outputs.changed }}
-      - name: No Python changes — skip format checks
-        if: steps.diff.outputs.changed == ''
-        run: echo "No Python file changes in this PR; skipping format checks."
+        shell: bash
+        run: |
+          FILES="${{ steps.diff.outputs.changed }}"
+          if [ -z "$FILES" ]; then
+            echo "No Python file changes in this PR; skipping isort."
+            exit 0
+          fi
+          echo "Running isort on: $FILES"
+          isort --profile black --check-only --diff $FILES
 
   format-fix:
     if: github.event_name != 'pull_request'
