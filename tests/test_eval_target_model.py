@@ -34,6 +34,7 @@ def test_gepa_uses_request_target_model(monkeypatch):
 
     async def fake_evaluate_batch(provider, candidate_prompt, examples, settings, model=None):
         seen["model"] = model
+
         class Res:
             mean_scores = {"exact_match": 1.0}
             cost = 0.0
@@ -73,4 +74,3 @@ def test_gepa_uses_request_target_model(monkeypatch):
 
     asyncio.run(main())
     assert seen["model"] == "mistral-large"
-

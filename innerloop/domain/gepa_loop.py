@@ -8,8 +8,8 @@ from ..settings import get_settings
 from .candidate import Candidate, apply_edits
 from .engine import get_target_provider
 from .eval import evaluate_batch
-from .judge import judge_scores
 from .examples import load_pack
+from .judge import judge_scores
 from .operators import OPERATORS
 from .optimize_engine import pareto_filter
 from .reflection_multirole import update_lessons_journal

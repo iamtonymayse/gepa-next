@@ -51,4 +51,3 @@ def test_gepa_includes_judge_axis(monkeypatch):
 
     assert called["judge"] > 0
     assert any("judge_score" in c.meta for c in captured.get("candidates", []))
-
