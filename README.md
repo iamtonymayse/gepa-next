@@ -1,12 +1,58 @@
-# GEPA-NEXT
-Production-ready GEPA-style evolutionary prompt optimization service with SSE streaming, idempotent jobs, bounded buffers/backpressure, and a fixed GPT-5 judge.
+# gepa-next
 
-## Docs
-- Quickstart: docs/QUICKSTART.md
-- API Reference: docs/API.md
-- SSE Guide: docs/SSE.md
-- Auth (Bearer): docs/AUTH.md
-- Environment (.env): docs/ENV.md
+GEPA-NEXT is a production-lean prompt optimization service that implements a GEPA-style evolutionary loop with streaming progress (SSE) and a fixed judge model. If you care about getting higher-quality prompts with fewer hand-tuned iterations, this is the reason this repo exists.
+
+> Why GEPA?
+The GEPA paper ("Guided Evolutionary Prompt Optimization") reports consistent gains over GRPO-style baselines in their experiments, thanks to (a) stronger selection using a fixed judge, (b) explicit lesson logging, and (c) diversity-preserving evolution. In short: less thrash, better prompts. See the deep-dive in docs/GEPA.md and the paper (arXiv:2507.19457) for details.
+
+## Status
+- HTTP API with /v1/optimize jobs, SSE progress stream, and health/metrics endpoints.
+- Fixed judge model; request-selectable target model.
+- Idempotent job creation; cancel & resume semantics.
+
+## TL;DR — How GEPA works here
+1. Start with an initial prompt and (optionally) example tasks.
+2. Generate a population of candidate prompts via small, targeted edits.
+3. Score candidates using a fixed judge model that compares outputs against goals/examples and emits structured feedback.
+4. Select the best (quality × diversity), log lessons, and evolve.
+5. Repeat for iterations, then return the champion + artifacts.
+
+This service wires that loop into a clean API with server-sent events for real-time progress and artifacts for auditing.
+
+## Quickstart
+
+### Local, dev mode (auth bypass for POST /optimize)
+```bash
+python -m innerloop --dev
+```
+
+```bash
+curl -s -X POST "http://127.0.0.1:8000/v1/optimize?iterations=5" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer dev-token" \
+  -d '{
+        "prompt": "You are an assistant that writes helpful answers.",
+        "target_model_id": "openai/gpt-5-mini",
+        "examples": [
+          {"input": "Summarize benefits of containerization for a CTO.", "ideal":"A crisp, non-hype summary with ops trade-offs."}
+        ]
+      }'
+```
+
+Then stream progress:
+
+```bash
+curl -N "http://127.0.0.1:8000/v1/optimize/$JOB_ID/events" \
+  -H "Authorization: Bearer dev-token"
+```
+
+Events are standard SSE. Example envelope:
+
+```
+data: {"id":5,"type":"progress","schema_version":1,"job_id":"123e4567","ts":1712345678,"data":{"stage":"select","iteration":2,"best_score":0.71}}
+```
+
+Supports `Last-Event-ID` for resume and sends periodic `:\n\n` heartbeats.
 
 ## Endpoints
 - POST /v1/optimize — start an optimization job
@@ -17,74 +63,16 @@ Production-ready GEPA-style evolutionary prompt optimization service with SSE st
 - GET /v1/healthz — health check
 - GET /v1/readyz — readiness check
 - GET /v1/version — version info
-- GET /v1/metricsz — metrics (JSON)
-- GET /v1/metrics — metrics (text/plain)
+- GET /v1/metricsz — JSON metrics
+- GET /v1/metrics — Prometheus text metrics
 
-## Admin Endpoints
-- GET /v1/admin/jobs
-- GET /v1/admin/jobs/{job_id}
-- DELETE /v1/admin/jobs/{job_id}
-- POST /v1/admin/jobs/{job_id}/cancel
+## Auth
+Set `API_BEARER_TOKENS=["token1","token2"]` in `.env` and send `Authorization: Bearer <token>`.
+Dev bypass for unauthenticated POST /optimize is enabled only with `python -m innerloop --dev` or `REQUIRE_AUTH=false`.
 
-## SSE Streaming & Resume
-The events endpoint is Server-Sent Events (`text/event-stream`) with:
-- Prelude `retry: <ms>` sent first.
-- Idle pings `:\n\n` when no events are pending.
-- Terminal types: `finished`, `failed`, `cancelled`.
-- Resume using the `Last-Event-ID` header or `last_event_id` query param.
+## Metrics
+GET `/v1/metrics` exposes Prometheus-style text. `sse_clients` is a gauge; see also JSON at `/v1/metricsz`.
 
-**Resume example:**
-```bash
-curl -N \
-  -H "Authorization: Bearer <token>" \
-  -H "Last-Event-ID: 5" \
-  "http://localhost:8000/v1/optimize/<job_id>/events"
-```
-
-## Judge vs Target
-**Judge (fixed):** Hard-locked to `openai:gpt-5-judge` via settings; cannot be overridden via API.
-**Target (per-call):** Select with `target_model_id` in the request. If omitted, server uses `TARGET_MODEL_DEFAULT`.
-Providers are chosen per model; the judge runs via OpenRouter with OpenAI pass-through headers.
-
-## Example Session (copy-paste)
-```bash
-# Start a job
-curl -s -H "Authorization: Bearer $API_BEARER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"Summarize: …","mode":"gepa","target_model_id":"openai:gpt-4o-mini","budget":{"max_generations":2}}' \
-  http://localhost:8000/v1/optimize | tee /tmp/job.json
-
-JOB=$(jq -r .job_id /tmp/job.json)
-
-# Stream events (SSE)
-curl -N -H "Authorization: Bearer $API_BEARER_TOKEN" \
-  -H "Accept: text/event-stream" \
-  http://localhost:8000/v1/optimize/$JOB/events
-
-# Query state
-curl -s -H "Authorization: Bearer $API_BEARER_TOKEN" \
-  http://localhost:8000/v1/optimize/$JOB | jq .
-
-# Metrics (text)
-curl -s http://localhost:8000/v1/metrics | head -n 20
-```
-
-## Highlights
-A GEPA-style evolutionary prompt optimization engine with GPT-5 judge.
-
-## Docs
-- **Quickstart:** `docs/QUICKSTART.md`
-- **API Reference:** `docs/API.md`
-- **SSE Guide:** `docs/SSE.md`
-- **Auth (Bearer):** `docs/AUTH.md`
-- **Environment (.env):** `docs/ENV.md`
-
-## Highlights
-- GPT-5 **judge** locked; **target** selectable per request.
-- Idempotent job creation; SSE streaming with resume; bounded buffers/backpressure.
-- Health/metrics/version endpoints for ops.
-
-## Contributing
-1. `pip install -e .[dev]`
-2. `pytest -q`
-3. Submit PRs with green tests.
+## Learn more
+- GEPA deep-dive for this service: docs/GEPA.md
+- API reference & envelopes: docs/API.md, docs/SSE.md
