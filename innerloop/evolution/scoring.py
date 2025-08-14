@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import Dict, Tuple
 
 
@@ -20,11 +21,8 @@ def normalize_judge(judge: Dict[str, float], scale: float = 10.0) -> Dict[str, f
     """
     out: Dict[str, float] = {}
     for k, v in judge.items():
-        try:
+        with suppress(TypeError, ValueError):
             out[k] = clamp(float(v) / scale)
-        except Exception:
-            # if value is non-numeric, drop it
-            continue
     return out
 
 
