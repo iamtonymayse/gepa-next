@@ -12,7 +12,7 @@ def test_slow_consumer_completes(monkeypatch):
     monkeypatch.setenv("SSE_PING_INTERVAL_S", "0.05")
     monkeypatch.setenv("SSE_BACKPRESSURE_FAIL_TIMEOUT_S", "1.0")
     monkeypatch.setenv("GEPA_DETERMINISTIC", "true")
-    monkeypatch.delenv("API_BEARER_TOKENS", raising=False)
+    monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     monkeypatch.setenv("REQUIRE_AUTH", "false")
     import innerloop.settings as settings
 
@@ -21,8 +21,17 @@ def test_slow_consumer_completes(monkeypatch):
 
     importlib.reload(main)
     with TestClient(main.app) as client:
-        job_id = client.post("/v1/optimize", json={"prompt": "x"}, params={"iterations": 2}).json()["job_id"]
-        with client.stream("GET", f"/v1/optimize/{job_id}/events") as stream:
+        job_id = client.post(
+            "/v1/optimize",
+            json={"prompt": "x"},
+            params={"iterations": 2},
+            headers={"Authorization": "Bearer token"},
+        ).json()["job_id"]
+        with client.stream(
+            "GET",
+            f"/v1/optimize/{job_id}/events",
+            headers={"Authorization": "Bearer token"},
+        ) as stream:
             it = stream.iter_lines()
             assert next(it).startswith("retry:")
             seen_finished = False
@@ -41,7 +50,7 @@ def test_stalled_consumer_triggers_backpressure(monkeypatch):
     monkeypatch.setenv("SSE_PING_INTERVAL_S", "0.05")
     monkeypatch.setenv("SSE_BACKPRESSURE_FAIL_TIMEOUT_S", "0.001")
     monkeypatch.setenv("GEPA_DETERMINISTIC", "true")
-    monkeypatch.delenv("API_BEARER_TOKENS", raising=False)
+    monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     monkeypatch.setenv("REQUIRE_AUTH", "false")
     import innerloop.settings as settings
 
@@ -50,8 +59,17 @@ def test_stalled_consumer_triggers_backpressure(monkeypatch):
 
     importlib.reload(main)
     with TestClient(main.app) as client:
-        job_id = client.post("/v1/optimize", json={"prompt": "x"}, params={"iterations": 10}).json()["job_id"]
-        with client.stream("GET", f"/v1/optimize/{job_id}/events") as stream:
+        job_id = client.post(
+            "/v1/optimize",
+            json={"prompt": "x"},
+            params={"iterations": 10},
+            headers={"Authorization": "Bearer token"},
+        ).json()["job_id"]
+        with client.stream(
+            "GET",
+            f"/v1/optimize/{job_id}/events",
+            headers={"Authorization": "Bearer token"},
+        ) as stream:
             time.sleep(0.7)  # stall reading to overflow queue
             lines = [ln for ln in stream.iter_lines() if ln.startswith("data:")]
     terminals = [json.loads(ln[5:].strip()) for ln in lines]

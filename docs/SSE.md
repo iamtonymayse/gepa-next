@@ -10,8 +10,21 @@ Endpoint: `GET /v1/optimize/{job_id}/events`
 ## Event envelope
 Each `data:` line is a compact JSON object with at least:
 ```json
-{"id":5,"type":"progress","ts":1712345678,"payload":{...}}
+{"id":5,"type":"progress","schema_version":1,"job_id":"123e4567","ts":1712345678,"data":{...}}
 ```
+
+## HTTP/stream headers
+The SSE endpoint sets:
+- Content-Type: text/event-stream
+- Cache-Control: no-cache
+- Connection: keep-alive
+- X-Accel-Buffering: no
+
+## Heartbeats
+Idle heartbeats are sent as `:\n\n` to keep intermediaries from closing the connection.
+
+## Resume semantics
+Clients may resume by sending `Last-Event-ID: <id>`. The server will attempt to replay from the next event id when possible and otherwise continue from the current head.
 
 ## Curl (live)
 ```bash

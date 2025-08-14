@@ -10,7 +10,7 @@ TL;DR (golden path)
 
 # 0) run the server (dev)
 export OPENROUTER_API_KEY=dev   # enables /optimize POST bypass without Authorization
-uvicorn innerloop.main:app --reload
+python -m innerloop --dev --reload
 
 # 1) create a job (idempotent)
 curl -s -X POST "http://localhost:8000/v1/optimize?iterations=2" \

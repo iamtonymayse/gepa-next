@@ -4,7 +4,7 @@ setup:
 	python -m venv .venv && . .venv/bin/activate && pip install -e .[dev]
 
 run:
-	uvicorn innerloop.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload
+	python -m innerloop --dev --host 0.0.0.0 --port ${PORT:-8000} --reload
 
 lint:
 	ruff check .

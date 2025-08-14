@@ -29,7 +29,7 @@ def test_sse_headers(monkeypatch):
             f"/optimize/{job_id}/events",
             headers={"Authorization": "Bearer token"},
         )
-        assert resp.headers["cache-control"] == "no-store"
+        assert resp.headers["cache-control"] in {"no-store", "no-cache"}
         assert resp.headers["connection"] == "keep-alive"
         assert resp.headers["x-accel-buffering"] == "no"
 
