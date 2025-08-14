@@ -1,0 +1,38 @@
+name: Auto-format (black & isort)
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install formatters
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort
+      - name: Run black
+        run: black .
+      - name: Run isort (profile=black)
+        run: isort . --profile black
+      - name: Auto-commit formatting changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-format with black/isort"
+          commit_user_name: github-actions[bot]
+          commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          branch: ${{ github.head_ref || github.ref_name }}

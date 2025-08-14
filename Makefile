@@ -1,10 +1,10 @@
-.PHONY: setup run lint typecheck test fmt qa docker-build docker-run taste taste-fast
+.PHONY: setup run lint typecheck test fmt qa docker-build docker-run taste taste-fast format format-check
 
 setup:
 	python -m venv .venv && . .venv/bin/activate && pip install -e .[dev]
 
 run:
-	python -m innerloop --dev --host 0.0.0.0 --port ${PORT:-8000} --reload
+        python -m innerloop --dev --host 0.0.0.0 --port ${PORT:-8000} --reload
 
 lint:
 	ruff check .
@@ -30,4 +30,13 @@ taste:
 	poetry run python tools/taste_and_smell.py
 
 taste-fast:
-	python tools/taste_and_smell.py --fast
+        python tools/taste_and_smell.py --fast
+
+.PHONY: format format-check
+format:
+	black .
+	isort . --profile black
+
+format-check:
+	black . --check --diff
+	isort . --profile black --check-only --diff
