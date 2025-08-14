@@ -11,7 +11,7 @@ Endpoint: `GET /v1/optimize/{job_id}/events`
 Each `data:` line is a compact JSON object with at least:
 ```json
 {"id":5,"type":"progress","schema_version":1,"job_id":"123e4567","ts":1712345678,"data":{...}}
-```
+```json
 
 ## HTTP/stream headers
 The SSE endpoint sets:
@@ -30,14 +30,14 @@ Clients may resume by sending `Last-Event-ID: <id>`. The server will attempt to 
 ```bash
 curl -N -H "Authorization: Bearer $API_BEARER_TOKEN" \
   "http://localhost:8000/v1/optimize/$JOB/events"
-```
+```json
 
 ## Curl (resume from id=5)
 ```bash
 curl -N -H "Authorization: Bearer $API_BEARER_TOKEN" \
   -H "Last-Event-ID: 5" \
   "http://localhost:8000/v1/optimize/$JOB/events"
-```
+```json
 
 ## Python client (requests + sseclient-py)
 See `examples/python_sse_client.py`.
@@ -55,7 +55,7 @@ See `examples/node_sse_client.js`.
 
 ### progress event shape
 
-```
+```json
 {
   "type": "progress",
   "schema_version": 1,
@@ -81,7 +81,7 @@ See `examples/node_sse_client.js`.
 
 ### selected event shape
 
-```
+```json
 {
   "type": "selected",
   "schema_version": 1,
@@ -102,7 +102,7 @@ See `examples/node_sse_client.js`.
 
 ### finished event shape
 
-```
+```json
 {
   "type": "finished",
   "schema_version": 1,
