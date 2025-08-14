@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
+import random
 from typing import Any, List, Mapping, Sequence
 
 
@@ -11,6 +11,7 @@ class Candidate:
     sections: List[str]
     examples_subset: List[int] | None = None
     meta: dict = field(default_factory=dict)
+
 
 def apply_edits(candidate: Candidate, edits: Sequence[Mapping[str, Any]]) -> Candidate:
     from .operators import OPERATORS

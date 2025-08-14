@@ -1,5 +1,6 @@
-import importlib
 import asyncio
+import importlib
+
 from innerloop.api.jobs.store import MemoryJobStore
 
 
@@ -7,6 +8,7 @@ def test_judge_cache(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
     monkeypatch.setenv("USE_MODEL_STUB", "true")
     import innerloop.domain.judge as judge
+
     importlib.reload(judge)
     store = MemoryJobStore()
 

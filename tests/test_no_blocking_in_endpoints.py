@@ -7,6 +7,7 @@ FORBIDDEN = [
     r"\baiohttp\.ClientSession\(",
 ]
 
+
 def test_no_blocking_http_in_endpoints():
     root = pathlib.Path(__file__).resolve().parents[1]
     routers = root / "innerloop" / "api" / "routers"

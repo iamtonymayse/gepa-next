@@ -1,0 +1,70 @@
+name: Formatting
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  format-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install formatters
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort
+      - name: Determine changed Python files
+        id: diff
+        shell: bash
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" -- '*.py' || true)
+          echo "$CHANGED" | tr '\n' ' ' > changed.txt
+          echo "changed=$(cat changed.txt)" >> "$GITHUB_OUTPUT"
+          echo "Changed Python files: $(cat changed.txt || true)"
+      - name: Black (check only on changed files)
+        if: steps.diff.outputs.changed != ''
+        run: black --check --diff ${{ steps.diff.outputs.changed }}
+      - name: isort (check only on changed files)
+        if: steps.diff.outputs.changed != ''
+        run: isort --profile black --check-only --diff ${{ steps.diff.outputs.changed }}
+      - name: No Python changes — skip format checks
+        if: steps.diff.outputs.changed == ''
+        run: echo "No Python file changes in this PR; skipping format checks."
+
+  format-fix:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install formatters
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort
+      - name: Black (auto-fix)
+        run: black .
+      - name: isort (auto-fix)
+        run: isort . --profile black
+      - name: Auto-commit formatting changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-format with black/isort"
+          commit_user_name: github-actions[bot]
+          commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          branch: ${{ github.ref_name }}

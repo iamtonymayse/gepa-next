@@ -17,7 +17,9 @@ class DeprecationMiddleware(BaseHTTPMiddleware):
             "/optimize": "/v1/optimize",
         }
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Response]
+    ) -> Response:
         response = await call_next(request)
         path = request.url.path
         for old, new in self._map.items():

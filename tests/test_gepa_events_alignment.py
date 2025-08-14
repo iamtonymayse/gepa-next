@@ -28,8 +28,12 @@ def test_gepa_emits_selected(monkeypatch):
     monkeypatch.setattr(gepa_loop, "judge_scores", fake_judge_scores)
     monkeypatch.setattr(gepa_loop, "run_reflection", fake_run_reflection)
     monkeypatch.setattr(gepa_loop, "apply_edits", lambda cand, edits: cand)
-    monkeypatch.setattr(gepa_loop, "OPERATORS", {"reorder_sections": lambda c, rng=None: c})
-    monkeypatch.setattr(gepa_loop, "load_pack", lambda name: SimpleNamespace(examples=[]))
+    monkeypatch.setattr(
+        gepa_loop, "OPERATORS", {"reorder_sections": lambda c, rng=None: c}
+    )
+    monkeypatch.setattr(
+        gepa_loop, "load_pack", lambda name: SimpleNamespace(examples=[])
+    )
     monkeypatch.setattr(gepa_loop, "get_target_provider", lambda settings: None)
 
     payload = {

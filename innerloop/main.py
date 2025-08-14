@@ -5,24 +5,24 @@ from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from .settings import get_settings
-from .api.middleware.auth import AuthMiddleware
-from .api.middleware.logging import LoggingMiddleware
-from .api.middleware.ratelimit import RateLimitMiddleware
-from .api.middleware.limits import SizeLimitMiddleware
-from .api.middleware.deprecation import DeprecationMiddleware
-from .api.routers.health import router as health_router
-from .api.routers.optimize import router as optimize_router
-from .api.routers.admin import router as admin_router
-from .api.routers.examples import router as examples_router
-from .api.routers.eval import router as eval_router
 from .api.jobs.registry import JobRegistry
 from .api.jobs.store import JobStore, MemoryJobStore, SQLiteJobStore
+from .api.middleware.auth import AuthMiddleware
+from .api.middleware.deprecation import DeprecationMiddleware
+from .api.middleware.limits import SizeLimitMiddleware
+from .api.middleware.logging import LoggingMiddleware
+from .api.middleware.ratelimit import RateLimitMiddleware
 from .api.models import ErrorCode, error_response
+from .api.routers.admin import router as admin_router
+from .api.routers.eval import router as eval_router
+from .api.routers.examples import router as examples_router
+from .api.routers.health import router as health_router
+from .api.routers.optimize import router as optimize_router
 from .domain.engine import close_provider
+from .settings import get_settings
 
 
 @asynccontextmanager
@@ -92,7 +92,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def unhandled_handler(request: Request, exc: Exception) -> JSONResponse:  # pragma: no cover - simple
+    async def unhandled_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:  # pragma: no cover - simple
         return error_response(
             ErrorCode.internal_error,
             "Internal server error",

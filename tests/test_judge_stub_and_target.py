@@ -1,8 +1,8 @@
 import importlib
 import json
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 
 @pytest.mark.timeout(5)
@@ -12,8 +12,10 @@ def test_judge_stub_and_target(monkeypatch):
     monkeypatch.setenv("USE_MODEL_STUB", "true")
     monkeypatch.setenv("JUDGE_MODEL_ID", "openai:gpt-5-judge")
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     body = {
         "prompt": "say hi",
@@ -30,7 +32,9 @@ def test_judge_stub_and_target(monkeypatch):
         assert resp.status_code == 200
         job_id = resp.json()["job_id"]
         with client.stream(
-            "GET", f"/v1/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+            "GET",
+            f"/v1/optimize/{job_id}/events",
+            headers={"Authorization": "Bearer token"},
         ) as stream:
             line_iter = stream.iter_lines()
             first = next(line_iter)
@@ -52,7 +56,9 @@ def test_judge_stub_and_target(monkeypatch):
         resp2 = client.post("/v1/optimize", json=body, params={"iterations": 2})
         job2 = resp2.json()["job_id"]
         with client.stream(
-            "GET", f"/v1/optimize/{job2}/events", headers={"Authorization": "Bearer token"}
+            "GET",
+            f"/v1/optimize/{job2}/events",
+            headers={"Authorization": "Bearer token"},
         ) as stream:
             for line in stream.iter_lines():
                 if line.startswith("data:"):

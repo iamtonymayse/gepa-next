@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable
 import hmac
+from typing import Callable
 import uuid
 
 from fastapi import Request, Response
@@ -12,12 +12,16 @@ from ..models import ErrorCode, error_response
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Response]
+    ) -> Response:
         settings = get_settings()
         path = request.url.path
 
         request_id = getattr(
-            request.state, "request_id", request.headers.get("x-request-id") or str(uuid.uuid4())
+            request.state,
+            "request_id",
+            request.headers.get("x-request-id") or str(uuid.uuid4()),
         )
         request.state.request_id = request_id
 
@@ -36,17 +40,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
         ):
             return await call_next(request)
 
-        # Bypass ONLY for POST /optimize (and /v1/optimize) when OPENROUTER_API_KEY set and no Authorization.
-        # GET/DELETE/SSE and all other routes (incl. admin) must require bearer auth.
+        # Dev-only: allow unauthenticated POST /optimize when OPENROUTER_API_KEY is
+        # set and REQUIRE_AUTH is false. In production (REQUIRE_AUTH=true) this path
+        # must NOT bypass authentication. GET/DELETE/SSE and all other routes always
+        # require bearer auth.
         if (
-            request.method == "POST"
+            not settings.REQUIRE_AUTH
+            and request.method == "POST"
             and path in {"/optimize", "/v1/optimize"}
             and settings.OPENROUTER_API_KEY
             and "authorization" not in request.headers
         ):
-            return await call_next(request)
-
-        if not settings.REQUIRE_AUTH:
             return await call_next(request)
 
         auth_header = request.headers.get("authorization")

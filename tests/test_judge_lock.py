@@ -8,8 +8,10 @@ def test_judge_is_locked(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
     monkeypatch.setenv("USE_MODEL_STUB", "true")
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.domain.judge as judge
+
     importlib.reload(judge)
     store = MemoryJobStore()
     before = judge.CALLS

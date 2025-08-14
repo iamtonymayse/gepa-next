@@ -6,40 +6,75 @@ from typing import Callable, Dict
 from .candidate import Candidate
 
 
-def edit_constraints(candidate: Candidate, rng: random.Random, note: str | None = None) -> Candidate:
-    new = Candidate(candidate.id, list(candidate.sections), list(candidate.examples_subset or []), dict(candidate.meta))
+def edit_constraints(
+    candidate: Candidate, rng: random.Random, note: str | None = None
+) -> Candidate:
+    new = Candidate(
+        candidate.id,
+        list(candidate.sections),
+        list(candidate.examples_subset or []),
+        dict(candidate.meta),
+    )
     new.meta["constraints"] = note or "edited"
     return new
 
 
 def reword_objectives(candidate: Candidate, rng: random.Random) -> Candidate:
-    new = Candidate(candidate.id, list(candidate.sections), list(candidate.examples_subset or []), dict(candidate.meta))
+    new = Candidate(
+        candidate.id,
+        list(candidate.sections),
+        list(candidate.examples_subset or []),
+        dict(candidate.meta),
+    )
     new.sections = [s + "!" for s in new.sections]
     return new
 
 
 def reorder_sections(candidate: Candidate, rng: random.Random) -> Candidate:
-    new = Candidate(candidate.id, list(candidate.sections), list(candidate.examples_subset or []), dict(candidate.meta))
+    new = Candidate(
+        candidate.id,
+        list(candidate.sections),
+        list(candidate.examples_subset or []),
+        dict(candidate.meta),
+    )
     rng.shuffle(new.sections)
     return new
 
 
 def toggle_chain_of_thought(candidate: Candidate, rng: random.Random) -> Candidate:
-    new = Candidate(candidate.id, list(candidate.sections), list(candidate.examples_subset or []), dict(candidate.meta))
+    new = Candidate(
+        candidate.id,
+        list(candidate.sections),
+        list(candidate.examples_subset or []),
+        dict(candidate.meta),
+    )
     new.meta["chain_of_thought"] = not new.meta.get("chain_of_thought", False)
     return new
 
 
 def swap_examples(candidate: Candidate, rng: random.Random) -> Candidate:
-    new = Candidate(candidate.id, list(candidate.sections), list(candidate.examples_subset or []), dict(candidate.meta))
+    new = Candidate(
+        candidate.id,
+        list(candidate.sections),
+        list(candidate.examples_subset or []),
+        dict(candidate.meta),
+    )
     if new.examples_subset is not None and len(new.examples_subset) >= 2:
         i, j = 0, 1
-        new.examples_subset[i], new.examples_subset[j] = new.examples_subset[j], new.examples_subset[i]
+        new.examples_subset[i], new.examples_subset[j] = (
+            new.examples_subset[j],
+            new.examples_subset[i],
+        )
     return new
 
 
 def trim_examples(candidate: Candidate, rng: random.Random) -> Candidate:
-    new = Candidate(candidate.id, list(candidate.sections), list(candidate.examples_subset or []), dict(candidate.meta))
+    new = Candidate(
+        candidate.id,
+        list(candidate.sections),
+        list(candidate.examples_subset or []),
+        dict(candidate.meta),
+    )
     if new.examples_subset:
         new.examples_subset = new.examples_subset[:-1]
     return new

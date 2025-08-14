@@ -7,8 +7,10 @@ def test_idempotent_job_creation(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.delenv("API_BEARER_TOKENS", raising=False)
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     from innerloop.api import metrics
 

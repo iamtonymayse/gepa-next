@@ -1,7 +1,7 @@
-import importlib
-import sys
-import pathlib
 import asyncio
+import importlib
+import pathlib
+import sys
 
 import httpx
 import pytest
@@ -22,8 +22,10 @@ async def gepa_client(monkeypatch) -> GepaClient:
     monkeypatch.setenv("OPENROUTER_API_KEY", "dev")
     monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     async with main.app.router.lifespan_context(main.app):
         transport = httpx.ASGITransport(app=main.app)

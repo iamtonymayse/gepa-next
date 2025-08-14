@@ -30,9 +30,14 @@ def _build_judge_prompt(
         f"Candidate: {candidate}",
     ]
     if examples:
-        ex_str = "; ".join(f"input: {e.get('input')}, expected: {e.get('expected', '')}" for e in examples)
+        ex_str = "; ".join(
+            f"input: {e.get('input')}, expected: {e.get('expected', '')}"
+            for e in examples
+        )
         parts.append(f"Examples: {ex_str}.")
-        parts.append("Coverage should reflect how well candidate addresses prompt and examples.")
+        parts.append(
+            "Coverage should reflect how well candidate addresses prompt and examples."
+        )
     return "\n".join(parts)
 
 
@@ -71,7 +76,9 @@ async def judge_scores(
             "temperature": 0.0,
             "max_tokens": 128,
         }
-        if "seed" in getattr(provider, "SUPPORTED_KWARGS", ()):  # providers supporting seed
+        if "seed" in getattr(
+            provider, "SUPPORTED_KWARGS", ()
+        ):  # providers supporting seed
             complete_kwargs["seed"] = 0
         try:
             raw = await provider.complete(message, **complete_kwargs)
@@ -138,7 +145,9 @@ async def judge_pair(task: str, a: str, b: str, store=None) -> Dict[str, Any]:
                 "temperature": 0.0,
                 "max_tokens": 64,
             }
-            if "seed" in getattr(provider, "SUPPORTED_KWARGS", ()):  # guard for providers w/ seed
+            if "seed" in getattr(
+                provider, "SUPPORTED_KWARGS", ()
+            ):  # guard for providers w/ seed
                 complete_kwargs["seed"] = 0
             out = await provider.complete(prompt=prompt, **complete_kwargs)
         except Exception:
@@ -191,7 +200,9 @@ async def judge_score(
 class JudgeStub:
     """Deterministic, offline judge for tests and local development."""
 
-    async def score(self, *, prompt: str, proposal: str, rubric: str | None = None) -> float:
+    async def score(
+        self, *, prompt: str, proposal: str, rubric: str | None = None
+    ) -> float:
         toks = proposal.lower().split()
         uniq = len(set(toks))
         return max(0.0, 100.0 - len(proposal)) + uniq
@@ -199,7 +210,10 @@ class JudgeStub:
     async def rank(
         self, *, prompt: str, proposals: Iterable[str], rubric: str | None = None
     ) -> List[Tuple[str, float]]:
-        items = [(p, await self.score(prompt=prompt, proposal=p, rubric=rubric)) for p in proposals]
+        items = [
+            (p, await self.score(prompt=prompt, proposal=p, rubric=rubric))
+            for p in proposals
+        ]
         items.sort(key=lambda t: t[1], reverse=True)
         return items
 
@@ -220,7 +234,9 @@ class JudgeLLM:
         # Constructing the provider is side-effect free; we won't call it in stubbed CI.
         self._provider = get_judge_provider(self._settings)
 
-    async def score(self, *, prompt: str, proposal: str, rubric: str | None = None) -> float:
+    async def score(
+        self, *, prompt: str, proposal: str, rubric: str | None = None
+    ) -> float:
         # We don't have explicit objective names here; use the built-in defaults path.
         data = await judge_scores(prompt, proposal, examples=None, objectives=None)
         return float(sum(data.get("scores", {}).values()))

@@ -9,7 +9,9 @@ cp .env.example .env
 Key vars:
 - `LOG_LEVEL` (`DEBUG|INFO|WARNING|ERROR`) – verbosity.
 - `DEBUG_LOG_CONSOLE` (`true|false`) – force console logging.
-- `API_BEARER_TOKEN` – shared dev bearer token. Send `Authorization: Bearer <token>`.
+- `API_BEARER_TOKENS` – JSON list of bearer tokens. Send `Authorization: Bearer <token>`.
+- `HOST` – interface to bind; defaults to 127.0.0.1 (loopback).
+- `PORT` – port to bind; defaults to 8000.
 - `TARGET_MODEL_DEFAULT` – default target model when request omits `target_model_id`.
 - `JUDGE_MODEL_ID` – judge identifier (fixed in code to GPT-5 judge).
 - `OPENROUTER_API_KEY` – required for judge/provider calls.

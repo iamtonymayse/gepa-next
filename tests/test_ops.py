@@ -2,8 +2,8 @@ import importlib
 import json
 import time
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 
 def create_client(monkeypatch, **env):
@@ -13,8 +13,10 @@ def create_client(monkeypatch, **env):
         else:
             monkeypatch.setenv(k, str(v))
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     return TestClient(main.app)
 
@@ -22,7 +24,9 @@ def create_client(monkeypatch, **env):
 def test_401_no_bypass(monkeypatch):
     client = create_client(monkeypatch, OPENROUTER_API_KEY=None, API_BEARER_TOKENS=None)
     with client:
-        resp = client.post("/optimize", json={"prompt": "hi"}, headers={"X-Request-ID": "test-req"})
+        resp = client.post(
+            "/optimize", json={"prompt": "hi"}, headers={"X-Request-ID": "test-req"}
+        )
         assert resp.status_code == 401
         body = resp.json()
         assert body["error"]["code"] == "unauthorized"
@@ -61,9 +65,7 @@ def test_cancel_flow(monkeypatch):
         job_id = client.post(
             "/optimize", json={"prompt": "hi"}, params={"iterations": 2}
         ).json()["job_id"]
-        client.delete(
-            f"/optimize/{job_id}", headers={"Authorization": "Bearer token"}
-        )
+        client.delete(f"/optimize/{job_id}", headers={"Authorization": "Bearer token"})
         deadline = time.time() + 1
         while time.time() < deadline:
             state = client.get(
@@ -75,7 +77,9 @@ def test_cancel_flow(monkeypatch):
         else:
             pytest.fail("not cancelled")
         with client.stream(
-            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+            "GET",
+            f"/optimize/{job_id}/events",
+            headers={"Authorization": "Bearer token"},
         ) as stream:
             events = [line for line in stream.iter_lines() if line.startswith("event:")]
         assert any(e == "event: cancelled" for e in events)
@@ -88,7 +92,10 @@ def test_cancel_flow(monkeypatch):
 
 def test_rate_limit(monkeypatch):
     client = create_client(
-        monkeypatch, OPENROUTER_API_KEY="dev", RATE_LIMIT_OPTIMIZE_RPS=1, RATE_LIMIT_OPTIMIZE_BURST=1
+        monkeypatch,
+        OPENROUTER_API_KEY="dev",
+        RATE_LIMIT_OPTIMIZE_RPS=1,
+        RATE_LIMIT_OPTIMIZE_BURST=1,
     )
     with client:
         codes = []
@@ -118,7 +125,9 @@ def test_sse_schema(monkeypatch):
     with client:
         job_id = client.post("/optimize", json={"prompt": "hi"}).json()["job_id"]
         with client.stream(
-            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+            "GET",
+            f"/optimize/{job_id}/events",
+            headers={"Authorization": "Bearer token"},
         ) as stream:
             it = stream.iter_lines()
             prelude = next(it)
@@ -135,4 +144,3 @@ def test_sse_schema(monkeypatch):
             payload = json.loads(data.split(":", 1)[1])
             for key in ["type", "schema_version", "job_id", "ts", "data"]:
                 assert key in payload
-

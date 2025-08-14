@@ -13,12 +13,12 @@ pip install -e .[dev]
 ## 3) Configure
 ```bash
 cp .env.example .env
-${EDITOR:-vi} .env   # set OPENROUTER_API_KEY and API_BEARER_TOKEN at minimum
+${EDITOR:-vi} .env   # set OPENROUTER_API_KEY and API_BEARER_TOKENS at minimum
 ```
 
 ## 4) Run
 ```bash
-uvicorn innerloop.main:app --host 0.0.0.0 --port 8000 --reload
+python -m innerloop --dev --host 0.0.0.0 --port 8000 --reload
 ```
 
 Health:

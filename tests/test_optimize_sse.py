@@ -1,7 +1,7 @@
 import importlib
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 
 @pytest.mark.timeout(5)
@@ -9,8 +9,10 @@ def test_optimize_sse(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("API_BEARER_TOKENS", '["token"]')
     import innerloop.settings as settings
+
     importlib.reload(settings)
     import innerloop.main as main
+
     importlib.reload(main)
     with TestClient(main.app) as client:
         resp = client.post("/optimize", json={"prompt": "hi"}, params={"iterations": 1})
@@ -18,7 +20,9 @@ def test_optimize_sse(monkeypatch):
         job_id = resp.json()["job_id"]
 
         with client.stream(
-            "GET", f"/optimize/{job_id}/events", headers={"Authorization": "Bearer token"}
+            "GET",
+            f"/optimize/{job_id}/events",
+            headers={"Authorization": "Bearer token"},
         ) as stream:
             line_iter = stream.iter_lines()
             first = next(line_iter)
