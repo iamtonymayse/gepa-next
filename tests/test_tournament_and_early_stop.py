@@ -49,6 +49,6 @@ def test_early_stop_and_events(monkeypatch):
                     saw.add(ln.split(":", 1)[1].strip())
                 if ln.startswith("event: finished"):
                     break
-        assert "mutation" in saw
-        assert "selected" in saw
+        assert "mutation" in saw  # nosec B101
+        assert "selected" in saw  # nosec B101
         # early_stop may occur, but not mandatory with seed

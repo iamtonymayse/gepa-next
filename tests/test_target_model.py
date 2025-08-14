@@ -31,16 +31,18 @@ def test_target_model_roundtrip(monkeypatch):
                 if line.startswith("data:"):
                     payload = json.loads(line.split(":", 1)[1])
                     if payload["type"] == "progress":
-                        assert payload["data"]["target_model"] == "unit-test-model"
+                        assert (
+                            payload["data"]["target_model"] == "unit-test-model"
+                        )  # nosec B101
                         saw_target = True
                 if line.startswith("event: finished"):
                     break
-            assert saw_target
+            assert saw_target  # nosec B101
         state = client.get(
             f"/v1/optimize/{job_id}",
             headers={"Authorization": "Bearer token"},
         ).json()
-        assert state["result"]["target_model"] == "unit-test-model"
+        assert state["result"]["target_model"] == "unit-test-model"  # nosec B101
 
 
 def test_target_model_default(monkeypatch):
@@ -67,4 +69,4 @@ def test_target_model_default(monkeypatch):
             f"/v1/optimize/{job_id}",
             headers={"Authorization": "Bearer token"},
         ).json()
-        assert state["result"]["target_model"] == "default-model"
+        assert state["result"]["target_model"] == "default-model"  # nosec B101
