@@ -241,6 +241,7 @@ class JobRegistry:
             best_score = float("-inf")
             stale = 0
             prev_pool: List[str] = []
+            finish_reason = "max_iterations"
 
             for i in range(iterations):
                 iter_start = time.perf_counter()
@@ -274,12 +275,17 @@ class JobRegistry:
                 chosen = ranked[0] if ranked else base
                 det_scores = scores_for(chosen) if objective_names else {}
                 judge = await judge_scores(task, chosen, examples, objective_names)
+                total = sum(det_scores.values()) + sum(judge["scores"].values())
+                delta_best = (
+                    total - best_score if best_score != float("-inf") else total
+                )
                 progress = {
                     "iteration": i + 1,
                     "proposal": chosen,
                     "target_model": target_model,
                     "rubric": rubric,
                     "scores": {**det_scores, "judge": judge["scores"]},
+                    "delta_best": delta_best,
                 }
                 await self._emit(job, "progress", progress)
                 iter_ms = (time.perf_counter() - iter_start) * 1000.0
@@ -289,7 +295,6 @@ class JobRegistry:
                 await self._emit(
                     job, "selected", {"candidate": chosen, "scores": progress["scores"]}
                 )
-                total = sum(det_scores.values()) + sum(judge["scores"].values())
                 if total > best_score:
                     best_score = total
                     best = chosen
@@ -298,6 +303,7 @@ class JobRegistry:
                     stale += 1
                     if stale >= early_stop_patience:
                         await self._emit(job, "early_stop", {"best": best})
+                        finish_reason = "early_stop"
                         break
                 base = chosen
                 prev_pool = ranked
@@ -321,6 +327,7 @@ class JobRegistry:
                 "scores": result_scores,
                 "target_model": target_model,
                 "rubric": rubric,
+                "reason": finish_reason,
             }
             job.status = JobStatus.FINISHED
             total_ms = (time.perf_counter() - job_start) * 1000.0

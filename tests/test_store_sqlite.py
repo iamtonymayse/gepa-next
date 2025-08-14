@@ -55,14 +55,14 @@ def test_persistence_across_reload(monkeypatch, tmp_path, store):
                             events.append(ev)
                     if line.startswith("data:") and events and events[-1] == "finished":
                         break
-            assert events == ["started", "progress", "finished"]
+            assert events == ["started", "progress", "finished"]  # nosec B101
             resp2 = client2.post("/v1/optimize", json={"prompt": "hi"}, headers=headers)
-            assert resp2.json()["job_id"] == job_id
+            assert resp2.json()["job_id"] == job_id  # nosec B101
         else:
             resp = client2.get(
                 f"/v1/optimize/{job_id}/events",
                 headers={"Authorization": "Bearer token"},
             )
-            assert resp.status_code == 404
+            assert resp.status_code == 404  # nosec B101
             resp2 = client2.post("/v1/optimize", json={"prompt": "hi"}, headers=headers)
-            assert resp2.json()["job_id"] != job_id
+            assert resp2.json()["job_id"] != job_id  # nosec B101

@@ -13,5 +13,5 @@ def test_iterations_min(monkeypatch):
     importlib.reload(main)
     with TestClient(main.app) as client:
         r = client.post("/v1/optimize", json={"prompt": "hi"}, params={"iterations": 0})
-        assert r.status_code == 422
-        assert r.json()["error"]["code"] == "validation_error"
+        assert r.status_code == 422  # nosec B101
+        assert r.json()["error"]["code"] == "validation_error"  # nosec B101

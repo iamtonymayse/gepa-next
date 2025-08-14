@@ -59,6 +59,6 @@ def test_sse_resume(monkeypatch):
                         ids.append(current_id)
                     if event == "finished":
                         break
-            assert received == ["progress", "progress", "finished"]
-            assert ids[0] >= last_id + 1
-            assert ids == sorted(ids)
+            assert received == ["progress", "progress", "finished"]  # nosec B101
+            assert ids[0] >= last_id + 1  # nosec B101
+            assert ids == sorted(ids)  # nosec B101
