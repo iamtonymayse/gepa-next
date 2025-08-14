@@ -276,7 +276,9 @@ class JobRegistry:
                 det_scores = scores_for(chosen) if objective_names else {}
                 judge = await judge_scores(task, chosen, examples, objective_names)
                 total = sum(det_scores.values()) + sum(judge["scores"].values())
-                delta_best = total - best_score if best_score != float("-inf") else total
+                delta_best = (
+                    total - best_score if best_score != float("-inf") else total
+                )
                 progress = {
                     "iteration": i + 1,
                     "proposal": chosen,
