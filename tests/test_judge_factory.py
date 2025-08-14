@@ -8,6 +8,8 @@ def test_get_judge_returns_llm_when_not_stub(monkeypatch):
     monkeypatch.setenv("USE_JUDGE_STUB", "false")
     monkeypatch.setenv("USE_MODEL_STUB", "false")
     monkeypatch.setenv("JUDGE_PROVIDER", "openrouter")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "ok")
+    monkeypatch.setenv("OPENAI_API_KEY", "test")
 
     # Reload modules so new env vars are picked up.
     import innerloop.settings as settings
