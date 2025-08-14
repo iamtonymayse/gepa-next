@@ -21,6 +21,16 @@ This service wires that loop into a clean API with server-sent events for real-t
 
 ## Quickstart
 
+```bash
+# Local dev (install dev tools once)
+pip install -r requirements-dev.txt
+pre-commit install
+make format-check
+
+# Before opening a PR, run:
+make preflight-fix && make preflight
+```
+
 ### Local, dev mode (auth bypass for POST /optimize)
 ```bash
 python -m innerloop --dev

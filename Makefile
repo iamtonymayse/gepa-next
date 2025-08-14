@@ -40,3 +40,10 @@ format:
 format-check:
 	black . --check --diff
 	isort . --profile black --check-only --diff
+
+.PHONY: preflight preflight-fix
+preflight:
+	bash scripts/preflight.sh
+
+preflight-fix:
+	bash scripts/preflight.sh --fix
