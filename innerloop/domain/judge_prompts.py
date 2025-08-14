@@ -1,3 +1,4 @@
+# Deterministic pairwise judge; justification capped at 12 words.
 PAIRWISE_TEMPLATE = """You are GPT-5 acting as a deterministic evaluation judge.
 Evaluate which candidate best satisfies the task below.
 Ignore style; reward clarity, faithfulness, and specificity.
@@ -12,5 +13,11 @@ CANDIDATE A:
 CANDIDATE B:
 {b}
 
-Output ONLY compact JSON on one line:
-{{"winner":"A"|"B","confidence":0..1,"justification":"<≤20 words>"}}"""
+Output EXACTLY one JSON object on a single line (no prose):
+{{"winner":"A","confidence":0.00,"justification":"<=12 words"}}
+Rules:
+- "winner" MUST be "A" or "B".
+- "confidence" MUST be a number in [0,1].
+- "justification" MUST be <=12 words; no chain-of-thought.
+Example:
+{{"winner":"A","confidence":0.73,"justification":"clear, specific, follows instructions"}}"""

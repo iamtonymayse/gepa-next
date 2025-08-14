@@ -1,7 +1,6 @@
 import pytest
 
 from innerloop.api import metrics
-from innerloop.domain import engine as engine_mod
 from innerloop.domain import judge as judge_mod
 
 pytestmark = pytest.mark.anyio
@@ -23,7 +22,7 @@ class _BadJsonProvider:
 
 
 async def test_judge_fallback_on_provider_error(monkeypatch):
-    monkeypatch.setattr(engine_mod, "get_judge_provider", lambda *a, **k: _FailingProvider())
+    monkeypatch.setattr(judge_mod, "get_judge_provider", lambda *a, **k: _FailingProvider())
     start = metrics.snapshot_metrics_json().get("judge_failures", 0)
     res = await judge_mod.judge(task="t", a="short", b="longer content")
     assert res["winner"] in {"A", "B"}
@@ -33,7 +32,7 @@ async def test_judge_fallback_on_provider_error(monkeypatch):
 
 
 async def test_judge_fallback_on_invalid_json(monkeypatch):
-    monkeypatch.setattr(engine_mod, "get_judge_provider", lambda *a, **k: _BadJsonProvider())
+    monkeypatch.setattr(judge_mod, "get_judge_provider", lambda *a, **k: _BadJsonProvider())
     start = metrics.snapshot_metrics_json().get("judge_failures", 0)
     res = await judge_mod.judge(task="t", a="short", b="much longer text than a")
     assert res["winner"] in {"A", "B"}

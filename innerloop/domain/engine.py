@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from contextlib import suppress
 from typing import Dict, Optional, Protocol
 
@@ -103,6 +104,8 @@ class OpenAIProvider:
             await self.client.aclose()
 
 
+logger = logging.getLogger(__name__)
+
 _target_provider_singleton: ModelProvider | None = None
 _judge_provider_singleton: ModelProvider | None = None
 _provider_singleton: Optional["ModelProvider"] = None
@@ -126,21 +129,25 @@ def get_judge_provider(settings: Optional[Settings] = None) -> ModelProvider:
     if settings.USE_MODEL_STUB:
         return LocalEchoProvider()
     global _judge_provider_singleton
-    if settings.JUDGE_PROVIDER == "openrouter" and settings.OPENROUTER_API_KEY:
-        extra: Dict[str, str] | None = None
-        if settings.OPENAI_API_KEY:
+    if settings.JUDGE_PROVIDER == "openrouter":
+        if not settings.OPENAI_API_KEY:
+            if getattr(settings, "ALLOW_JUDGE_FALLBACK", False):
+                logger.warning("OpenRouter judge missing OPENAI_API_KEY; falling back")
+                return LocalEchoProvider()
+            raise RuntimeError("JUDGE_PROVIDER=openrouter requires OPENAI_API_KEY for GPT-5 judge")
+        if settings.OPENROUTER_API_KEY:
             extra = {"X-OpenAI-Api-Key": settings.OPENAI_API_KEY}
-        if (
-            not isinstance(_judge_provider_singleton, OpenRouterProvider)
-            or _judge_provider_singleton.api_key != settings.OPENROUTER_API_KEY
-            or getattr(_judge_provider_singleton, "_extra_headers", {}) != (extra or {})
-        ):
-            _judge_provider_singleton = OpenRouterProvider(
-                settings.OPENROUTER_API_KEY,
-                extra_headers=extra,
-                timeout=settings.JUDGE_TIMEOUT_S,
-            )
-        return _judge_provider_singleton
+            if (
+                not isinstance(_judge_provider_singleton, OpenRouterProvider)
+                or _judge_provider_singleton.api_key != settings.OPENROUTER_API_KEY
+                or getattr(_judge_provider_singleton, "_extra_headers", {}) != extra
+            ):
+                _judge_provider_singleton = OpenRouterProvider(
+                    settings.OPENROUTER_API_KEY,
+                    extra_headers=extra,
+                    timeout=settings.JUDGE_TIMEOUT_S,
+                )
+            return _judge_provider_singleton
     if settings.JUDGE_PROVIDER == "openai" and settings.OPENAI_API_KEY:
         if (
             not isinstance(_judge_provider_singleton, OpenAIProvider)

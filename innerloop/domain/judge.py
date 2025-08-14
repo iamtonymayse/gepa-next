@@ -23,7 +23,8 @@ def _build_judge_prompt(
     obj_list = ", ".join(objectives or [])
     parts = [
         "You are a strict judge. Score the candidate answer for each objective (0-10).",
-        'Return JSON: {"scores":{...},"rationale":"..."}.',
+        'Return JSON on one line: {"scores":{...},"justification":"<=12 words"}.',
+        "No chain-of-thought beyond the short justification.",
         f"Objectives: {obj_list if obj_list else 'brevity, diversity, coverage'}.",
         f"Prompt: {prompt}",
         f"Candidate: {candidate}",
@@ -61,20 +62,23 @@ async def judge_scores(
                 "diversity": max(0, min(10, diversity)),
                 "coverage": max(0, min(10, coverage)),
             },
-            "rationale": "stub",
+            "justification": "stub",
         }
     else:
         message = _build_judge_prompt(prompt, candidate, examples, objectives)
-        raw = await provider.complete(
-            message,
-            model=settings.JUDGE_MODEL_ID,
-            temperature=0.0,
-            max_tokens=300,
-        )
+        complete_kwargs = {
+            "model": settings.JUDGE_MODEL_ID,
+            "temperature": 0.0,
+            "max_tokens": 128,
+        }
+        if "seed" in getattr(provider, "SUPPORTED_KWARGS", ()):  # providers supporting seed
+            complete_kwargs["seed"] = 0
         try:
+            raw = await provider.complete(message, **complete_kwargs)
             data = json.loads(raw)
         except Exception:
-            data = {}
+            inc("judge_failures")
+            return {"scores": {}, "justification": "", "unavailable": True}
         scores: Dict[str, float] = {}
         for obj in objectives:
             try:
@@ -82,8 +86,8 @@ async def judge_scores(
             except Exception:
                 val = 0.0
             scores[obj] = max(0.0, min(10.0, val))
-        rationale = data.get("rationale") or ""
-        return {"scores": scores, "rationale": rationale}
+        justification = str(data.get("justification", ""))[:128]
+        return {"scores": scores, "justification": justification}
 
 
 CALLS = 0
