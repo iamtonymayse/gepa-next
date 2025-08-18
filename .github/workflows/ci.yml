@@ -98,7 +98,7 @@ jobs:
         working-directory: ${{ env.PROJ_DIR }}
 
       - name: Security scan
-        run: bandit -r "$PROJ_DIR" -x "$PROJ_DIR/tests" -q
+        run: bandit -c "$PROJ_DIR/bandit.yaml" -r "$PROJ_DIR" -q
 
       - name: Complexity scan
         run: |

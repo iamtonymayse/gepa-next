@@ -55,7 +55,7 @@ run_or_note "Ruff" "ruff check ."
 run_or_note "MyPy" "mypy ."
 
 # Security
-run_or_note "Bandit" "bandit -r . -x tests"
+run_or_note "Bandit" "bandit -c bandit.yaml -r . -q"
 run_or_note "Semgrep" "semgrep --error --config auto || semgrep --config p/ci --error"
 run_or_note "pip-audit" "pip-audit -r requirements.txt || true"
 

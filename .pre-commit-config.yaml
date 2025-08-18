@@ -22,7 +22,8 @@ repos:
     rev: 1.7.8
     hooks:
       - id: bandit
-        args: [-r, ., -x, tests]
+        args: [-c, bandit.yaml, -r, ., -q]
+        pass_filenames: false
   - repo: https://github.com/returntocorp/semgrep
     rev: v1.77.0
     hooks:

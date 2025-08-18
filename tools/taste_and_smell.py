@@ -96,18 +96,10 @@ def check_mypy(proj: Path) -> Dict[str, Any]:
 
 
 def check_bandit(proj: Path) -> Dict[str, Any]:
+    """Run bandit and return a dict with 'issues' (tests/ excluded via repo config)."""
+    cfg = proj / "bandit.yaml"
     data, code = run_json(
-        [
-            "bandit",
-            "-r",
-            str(proj),
-            "-f",
-            "json",
-            "-q",
-            "-x",
-            str(proj / "tests"),
-        ],
-        proj,
+        ["bandit", "-c", str(cfg), "-r", str(proj), "-f", "json", "-q"], proj
     )
     issues = (data or {}).get("results", []) if isinstance(data, dict) else []
     return {"issues": issues, "code": code}
