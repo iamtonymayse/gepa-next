@@ -1,0 +1,8 @@
+exclude_dirs:
+  - tests
+  - .venv
+  - venv
+  - build
+  - dist
+  - .git
+skips: []
